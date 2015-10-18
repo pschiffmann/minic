@@ -2,7 +2,6 @@ library minic.src.scope;
 
 import 'token.dart';
 import 'statement.dart';
-import 'exception.dart';
 import 'expression.dart';
 
 /// Scopes contain named [Definition]s. They can be nested.
@@ -16,17 +15,15 @@ import 'expression.dart';
 /// Lookups are first done in the current scope, and if the identifier wasn't
 /// found, forwarded to the parent. If there is no parent, which is the case for
 /// the global namespace, an exception is thrown.
-///
-/// TODO: Add support for named scopes for `namespace` and class definitions and
-/// implement access using the `::` operator.
 class Scope {
   Map<String, Definition> _definitions;
-  List<ExpressionStatement> initializers;
   Scope parent;
 
+  Iterable<Variable> get variables =>
+      _definitions.values.where((def) => def is Variable);
+
   Scope([Scope this.parent = null])
-      : _definitions = <String, Definition>{},
-        initializers = <ExpressionStatement>[];
+      : _definitions = <String, Definition>{};
 
   /// Add [definition] to this scope.
   void define(Definition definition) {
@@ -39,6 +36,17 @@ class Scope {
     if (parent != null) return parent.lookUp(identifier);
     throw new UndefinedNameException('`$identifier` is not defined.');
   }
+}
+
+/// Represents the global namespace.
+///
+/// This one differs from a block scope in two ways: It may contain function
+/// definitions, and it contains global variables that are not initialized by
+/// a normal statement, but before the execution of the `main` function.
+class Namespace extends Scope {
+  List<ExpressionStatement> initializers;
+
+  Namespace() : super(), initializers = <ExpressionStatement>[];
 }
 
 /// Represents anything with a name, like variables, types and functions.
