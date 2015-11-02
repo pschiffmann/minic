@@ -1,6 +1,11 @@
 name: 'minic'
 dependencies:
+  analyzer: '^0.26.1'
+  barback: 'any'
   browser: 'any'
-  typed_data: '1.0.0'
+  markdown: 'any'
+  mustache: 'any'
 dev_dependencies:
   test: '^0.12.0'
+transformers:
+  - minic/transformer/render_instruction_docs
