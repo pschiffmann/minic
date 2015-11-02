@@ -5,6 +5,7 @@ dependencies:
   browser: 'any'
   markdown: 'any'
   mustache: 'any'
+  typed_data: 'any'
 dev_dependencies:
   test: '^0.12.0'
 transformers:
