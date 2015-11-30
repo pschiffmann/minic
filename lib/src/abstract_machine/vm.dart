@@ -1,22 +1,33 @@
 library minic.src.cmachine;
 
 import 'dart:typed_data';
+import 'dart:math' show pow;
 
 /// Instruction set of the virtual C machine.
 ///
-/// Documentation for the individual instruction codes is parsed by a
-/// transformer and used in the application as help texts.
+/// Documentation for the individual instruction codes is parsed by transformer
+/// `render_instruction_docs` and used in the application as help texts.
+///
+/// C standard source:
+/// * http://www.open-std.org/jtc1/sc22/wg14/www/standards.html#9899
+/// * http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 enum InstructionCode {
   /// Load const
   /// ==========
   ///
-  /// **loadc** _value_
+  /// **loadc1** _value_
   ///
-  /// Load immediate _value_ on the stack.
+  /// Push immediate _value_ on the stack.
   ///
-  /// ```
-  /// SP--; S[SP] ← _value_;
-  /// ```
+  ///     SP--; S[SP] ← value;
+  ///
+  /// * * * * *
+  ///
+  /// **loadc2** _value_
+  ///
+  /// Push immediate _value_ on the stack.
+  ///
+  ///     SP ← SP - 2; S[SP..SP + 1] ← value;
   loadc,
 
   /// Load address referenced by current stack element
@@ -31,14 +42,6 @@ enum InstructionCode {
   /// S[SP + 1]..S[SP + _size_ - 2] ← S[S[SP + 1]..S[SP]]..S[S[SP + 1]..S[SP] - ];
   /// ```
   load,
-
-  /// Load from address
-  /// =================
-  ///
-  /// **loada** _q_ _m_
-  ///
-  /// loadc q, load m
-  loada,
 
   /// Load from constant address relative to frame pointer
   /// ====================================================
@@ -123,9 +126,27 @@ enum InstructionCode {
   /// PC ← B + S[SP]; SP−−;
   jumpi,
 
-  /// **add**
+  /// Add
+  /// ===
   ///
-  /// S[SP − 1] ← S[SP − 1] + S[SP]; SP--;
+  /// **add8**
+  ///
+  ///     S[SP - 1] ← S[SP] + S[SP - 1];
+  ///     SP++
+  ///
+  /// **add16**
+  ///
+  ///     op1 := SP .. SP - 1
+  ///     op2 := SP - 2 .. SP - 3
+  ///     S[op1] ← S[op1] + S[op2]
+  ///     SP ← SP + 2
+  ///
+  /// **add32**
+  ///
+  ///     op1 := SP .. SP - 3
+  ///     op2 := SP - 4 .. SP - 7
+  ///     S[op1] ← S[op1] + S[op2]
+  ///     SP ← SP + 4
   add,
 
   /// **sub**
@@ -252,7 +273,7 @@ class VM {
   ///
   /// The stack memory begins at `memory.size - 1` and grows towards zero, while
   /// the heap begins at zero and grows towards infinity.
-  Uint8List memory;
+  ByteData memory;
 
   /// Points to the lowest currently used address of the stack (in [memory]).
   int stackPointer;
@@ -265,6 +286,8 @@ class VM {
 
   /// Stores the index into the program code of the next instruction.
   int programCounter;
+
+  VM() : memory = new ByteData.view(new Uint8List(8).buffer);
 
   /// Execute [instruction] on the current data.
   ///
@@ -291,4 +314,80 @@ class VM {
   void rollback() {
     throw new UnimplementedError();
   }
+
+  num readMemoryValue(int address, NumberType numberType) {
+    switch (numberType) {
+      case NumberType.int8:
+        return memory.getInt8(address);
+      case NumberType.int16:
+        return memory.getInt16(address);
+      case NumberType.int32:
+        return memory.getInt32(address);
+      case NumberType.int64:
+        return memory.getInt64(address);
+      case NumberType.fp32:
+        return memory.getFloat32(address);
+      case NumberType.fp64:
+        return memory.getFloat64(address);
+    }
+  }
+
+  num popStack(NumberType numberType) {
+    var value = readMemoryValue(stackPointer, numberType);
+    stackPointer -= numberTypeByteCount[numberType];
+    return value;
+  }
+
+  void setMemoryValue(int address, NumberType numberType, num value) {
+    if (numberType == NumberType.fp32 || numberType == NumberType.fp64) value =
+        value.toDouble();
+    else value = value.toInt() & numberTypeBitmasks[numberType];
+
+    switch (numberType) {
+      case NumberType.int8:
+        memory.setInt8(address, value);
+        break;
+      case NumberType.int16:
+        memory.setInt16(address, value);
+        break;
+      case NumberType.int32:
+        memory.setInt32(address, value);
+        break;
+      case NumberType.int64:
+        memory.setInt64(address, value);
+        break;
+      case NumberType.fp32:
+        memory.setFloat32(address, value);
+        break;
+      case NumberType.fp64:
+        memory.setFloat64(address, value);
+        break;
+    }
+  }
+
+  void pushStack(NumberType numberType, num value) {
+    stackPointer += numberTypeByteCount[numberType];
+    setMemoryValue(stackPointer, numberType, value);
+  }
 }
+
+enum NumberType {
+  int8,
+  int16,
+  int32,
+  int64,
+  fp32,
+  fp64
+}
+
+final Map<NumberType, int> numberTypeByteCount = {
+  NumberType.int8: 1,
+  NumberType.int16: 2,
+  NumberType.int32: 4,
+  NumberType.int64: 8
+};
+
+final Map<NumberType, int> numberTypeBitmasks =
+    new Map<NumberType, int>.fromIterable(numberTypeByteCount.keys,
+        key: (numberType) => numberType,
+        value: (numberType) => pow(2, 8 * numberTypeByteCount[numberType]) - 1);
