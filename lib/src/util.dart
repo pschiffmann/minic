@@ -1,7 +1,5 @@
 library minic.src.util;
 
-import 'dart:math';
-
 /// A wrapper around another [Iterator] with an additional getter [next].
 class PeekIterator<E> implements Iterator<E> {
   Iterator<E> original;
@@ -33,6 +31,3 @@ class PeekIterator<E> implements Iterator<E> {
     return true;
   }
 }
-
-/// Return the number of bytes required to represent `n` values.
-int calculateRequiredBytes(int n) => (log(n) / log(256)).ceil();

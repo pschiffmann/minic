@@ -1,7 +1,6 @@
 library minic.src.abstract_machine.instruction_set;
 
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'vm.dart';
 import '../util.dart';
@@ -37,8 +36,8 @@ class InstructionSet {
     var codeWidth = calculateRequiredBytes(instructions.length);
     var argumentWidth = instructions.fold(
         0,
-        (int prev, instruction) =>
-            max(prev, instruction.immediateArgumentSize));
+        (int prev, Instruction instruction) =>
+            max(prev, instruction.argumentSize));
     return new InstructionSet._internal(instructions, codeWidth, argumentWidth);
   }
 
@@ -75,9 +74,6 @@ class InstructionSet {
 /// addition for 8, 16, 32 and 64 bit words. We save a lot of copy-paste by
 /// creating four [AddInstruction] objects with appropriate sizes.
 abstract class Instruction {
-
-  static ByteData _reinterpreter = new ByteData.view(new Uint8List(8).buffer);
-
   /// Either the type of the expected immediate argument that [execute] must be
   /// called with, or null.
   NumberType get expectedArgument;
@@ -96,27 +92,6 @@ abstract class Instruction {
   /// This method may return a boolean to set the carry flag in the VM. If this
   /// method returns null, the VM will reset the carry flag automatically.
   execute(VM vm, num immediateArgument);
-
-  ///
-  num extractImmediateArgument(int rawArgumentBytes) {
-    _reinterpreter.setUint64(0, rawArgumentBytes & numberTypeBitmasks[expectedArgument]);
-    switch (expectedArgument) {
-      case NumberType.int8:
-        return _reinterpreter.getInt8(0);
-      case NumberType.int16:
-        return _reinterpreter.getInt16(0);
-      case NumberType.int32:
-        return _reinterpreter.getInt32(0);
-      case NumberType.int64:
-        return _reinterpreter.getInt64(0);
-      case NumberType.fp32:
-        return _reinterpreter.getFloat32(0);
-      case NumberType.fp64:
-        return _reinterpreter.getFloat64(0);
-      default:
-        return 0;
-    }
-  }
 }
 
 class PushInstruction extends Instruction {
