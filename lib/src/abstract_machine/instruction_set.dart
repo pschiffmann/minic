@@ -3,7 +3,7 @@ library minic.src.abstract_machine.instruction_set;
 import 'dart:math';
 
 import 'vm.dart';
-import '../util.dart';
+import '../memory.dart';
 
 /// This class compiles a list of [Instruction]s into an instruction set. It
 /// derives the size (in bytes) of the binary encoding and the codes from its

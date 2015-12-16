@@ -13,7 +13,7 @@ class VM {
   /// Points to the lowest currently used address of the stack (in [memory]).
   int stackPointer;
 
-  /// Points to the highest currently used address of the heap (in [memory]).
+  ///
   int framePointer;
 
   /// Points to the highest stack index the current function might allocate.
@@ -32,7 +32,8 @@ class VM {
   MemoryBlock _reinterpreter = new MemoryBlock(8);
 
   VM(this.instructionSet, int memorySize)
-      : memory = new MemoryBlock(memorySize);
+      : memory = new MemoryBlock(memorySize),
+        stackPointer = memorySize;
 
   /// Execute [instruction] on the current data.
   ///
@@ -66,7 +67,7 @@ class VM {
   /// then decrease the stack pointer by the size of that value.
   num popStack(NumberType numberType) {
     var value = readMemoryValue(stackPointer, numberType);
-    stackPointer -= numberTypeByteCount[numberType];
+    stackPointer += numberTypeByteCount[numberType];
     return value;
   }
 
@@ -80,7 +81,7 @@ class VM {
   /// the size of that value, then place the encoded value into [memory] at that
   /// address.
   void pushStack(NumberType numberType, num value) {
-    stackPointer += numberTypeByteCount[numberType];
+    stackPointer -= numberTypeByteCount[numberType];
     setMemoryValue(stackPointer, numberType, value);
   }
 }
