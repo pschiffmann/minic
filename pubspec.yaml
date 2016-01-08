@@ -6,6 +6,7 @@ dependencies:
   markdown: 'any'
   mustache: 'any'
   typed_data: 'any'
+  verbose_regexp: '^0.1.0'
 dev_dependencies:
   test: '^0.12.0'
 transformers:
