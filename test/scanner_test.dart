@@ -22,7 +22,8 @@ void main() {
       = += -= *= /= %= <<= >>= &= ^= |=
       ,
       { } ;
-    '''.trim();
+    '''
+        .trim();
 
     // http://en.cppreference.com/w/c/keyword
     var keywords = '''
@@ -41,7 +42,8 @@ void main() {
       union unsigned
       void volatile
       while
-    '''.trim();
+    '''
+        .trim();
     var builtinNames = 'char double float int';
 
     test('covers all C operators', () {
@@ -129,16 +131,15 @@ void main() {
       var scanner = new Scanner('''
 first second
   third
-fourth fifth'''
-      );
+fourth fifth''');
       var expected = [
-            new Token(null, 'first', new Point(0, 0)),
-            new Token(null, 'second', new Point(6, 0)),
-            new Token(null, 'third', new Point(3, 1)),
-            new Token(null, 'fourth', new Point(0, 2)),
-            new Token(null, 'fifth', new Point(7, 2)),
-            new Token(null, null, new Point(12, 2))
-          ];
+        new Token(null, 'first', new Point(0, 0)),
+        new Token(null, 'second', new Point(6, 0)),
+        new Token(null, 'third', new Point(3, 1)),
+        new Token(null, 'fourth', new Point(0, 2)),
+        new Token(null, 'fifth', new Point(7, 2)),
+        new Token(null, null, new Point(12, 2))
+      ];
       while (scanner.moveNext()) {
         expect(scanner.current.value, equals(expected.first.value));
         expect(scanner.current.position, equals(expected.first.position));

@@ -61,8 +61,8 @@ class InstructionSet {
   /// Throws [ArgumentError] if `instruction` is not in this instruction set.
   int encode(Instruction instruction) {
     var index = instructions.indexOf(instruction);
-    if (index < 0) throw new ArgumentError.value(
-        instruction, "not in this instruction set");
+    if (index < 0)
+      throw new ArgumentError.value(instruction, "not in this instruction set");
     return index << argumentWidth * 8;
   }
 }

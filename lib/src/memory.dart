@@ -80,9 +80,10 @@ class MemoryBlock {
   /// Insert value into [buffer] at the specified address, encoded as the
   /// specified number type.
   void setValue(int address, NumberType numberType, num value) {
-    if (numberType == NumberType.fp32 || numberType == NumberType.fp64) value =
-        value.toDouble();
-    else value = value.toInt() & numberTypeBitmasks[numberType];
+    if (numberType == NumberType.fp32 || numberType == NumberType.fp64)
+      value = value.toDouble();
+    else
+      value = value.toInt() & numberTypeBitmasks[numberType];
 
     switch (numberType) {
       case NumberType.uint8:

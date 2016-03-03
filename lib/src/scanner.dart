@@ -196,7 +196,9 @@ class Scanner extends PeekIterator<Token> {
           // Helper function that returns a [Point], where `y` is the number of
           // `\n` in `str`, and `x` the number of characters in the last line.
           var countLines = (String str) => new Point(
-              str.endsWith('\n') ? 0 : str.length - max(0, str.lastIndexOf('\n')),
+              str.endsWith('\n')
+                  ? 0
+                  : str.length - max(0, str.lastIndexOf('\n')),
               '\n'.allMatches(str).length);
 
           var logicalPosition = new Point(0, 0);
@@ -212,16 +214,19 @@ class Scanner extends PeekIterator<Token> {
               }
             }
 
-            if (match == null) throw new UnrecognizedSourceCodeException(
-                "Couldn't match the source against any pattern",
-                (lines + '\n').substring(0, lines.indexOf('\n')),
-                logicalPosition);
+            if (match == null)
+              throw new UnrecognizedSourceCodeException(
+                  "Couldn't match the source against any pattern",
+                  (lines + '\n').substring(0, lines.indexOf('\n')),
+                  logicalPosition);
 
             lines = lines.substring(match.group(0).length);
             var offset = countLines(match.group(0));
-            if (offset.y == 0) logicalPosition += offset;
-            else logicalPosition =
-                new Point(offset.x, logicalPosition.y + offset.y);
+            if (offset.y == 0)
+              logicalPosition += offset;
+            else
+              logicalPosition =
+                  new Point(offset.x, logicalPosition.y + offset.y);
           }
 
           yield new Token(TokenType.endOfFile, null, logicalPosition);
@@ -253,10 +258,11 @@ class Scanner extends PeekIterator<Token> {
   /// doesn't match the [expected] ones.
   /// `expected` may be a list of [TokenType]s, or a single one.
   void _assertTypeMatchesExpected(Token token, List<String> expected) {
-    if (token ==
-        null) throw new UnexpectedTokenException('Tokens exhausted', null);
-    if (!expected.contains(token.type.name)) throw new UnexpectedTokenException(
-        'Expected one of $expected, but found ${token.type}', token);
+    if (token == null)
+      throw new UnexpectedTokenException('Tokens exhausted', null);
+    if (!expected.contains(token.type.name))
+      throw new UnexpectedTokenException(
+          'Expected one of $expected, but found ${token.type}', token);
   }
 }
 
