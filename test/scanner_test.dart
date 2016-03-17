@@ -1,150 +1,170 @@
 import 'package:test/test.dart';
 import 'package:minic/src/scanner.dart';
-import 'dart:math' show Point;
+import 'package:minic/src/memory.dart';
+import 'package:source_span/source_span.dart';
 
 void main() {
-  group('TokenType.values', () {
-    // http://en.cppreference.com/w/c/language/operator_precedence
-    var operators = '''
-      ++ -- ( ) [ ] . ->
-      ! ~ sizeof
-      * / %
-      + -
-      << >>
-      < <= > >=
-      == !=
-      &
-      ^
-      |
-      &&
-      ||
-      ? :
-      = += -= *= /= %= <<= >>= &= ^= |=
-      ,
-      { } ;
-    '''
-        .trim();
-
-    // http://en.cppreference.com/w/c/keyword
-    var keywords = '''
-      auto
-      break
-      case const continue
-      default do
-      else enum extern
-      for
-      goto
-      if
-      long
-      register return
-      short signed static struct switch
-      typedef
-      union unsigned
-      void volatile
-      while
-    '''
-        .trim();
-    var builtinNames = 'char double float int';
-
-    test('covers all C operators', () {
-      var it = new Scanner(operators);
-      for (var expectedMatch in operators.split(new RegExp(r'\s+'))) {
-        it.moveNext();
-        // Correct substring matched?
-        expect(it.current.value, equals(expectedMatch));
-        // Matched by correct pattern?
-        expect(it.current.type, equals(TokenType.values[expectedMatch]));
-      }
-    });
-
-    test('covers all C keywords (pre C99)', () {
-      var it = new Scanner(keywords);
-      for (var expectedMatch in keywords.split(new RegExp(r'\s+'))) {
-        it.moveNext();
-        // Correct substring matched?
-        expect(it.current.value, equals(expectedMatch));
-        // Matched by correct pattern?
-        expect(it.current.type, equals(TokenType.values[expectedMatch]));
-      }
-
-      it = new Scanner(builtinNames);
-      for (var expectedMatch in builtinNames.split(new RegExp(r'\s+'))) {
-        it.moveNext();
-        // Correct substring matched?
-        expect(it.current.value, equals(expectedMatch));
-        // Matched by correct pattern?
-        expect(it.current.type, equals(TokenType.values['name']));
-      }
-    });
-
-    test('matches literals', () {
-      var it = new Scanner('''
-        42 052 0x2a 0X2A
-        123.456e-67 .1E4f 58. 4e2
-        \'c\'
-        "hello world"
-      ''');
-
-      for (var literal in [
-        '42',
-        '052',
-        '0x2a',
-        '0X2A',
-        '123.456e-67',
-        '.1E4f',
-        '58.',
-        '4e2'
-      ]) {
-        it.moveNext();
-        expect(it.current.value, equals(literal));
-        expect(it.current.type, equals(TokenType.values['numberLiteral']));
-      }
-      it.moveNext();
-      expect(it.current.value, equals("'c'"));
-      expect(it.current.type, equals(TokenType.values['charLiteral']));
-      it.moveNext();
-      expect(it.current.value, equals('"hello world"'));
-      expect(it.current.type, equals(TokenType.values['stringLiteral']));
-    });
-
-    test("doesn't recognize undefined stuff", () {
-      var allRecognizedTokenTypes = new List.from(TokenType.values.values);
-      var allInputs = [
-        operators,
-        keywords,
-        '4',
-        '"example string"',
-        "'c'",
-        'example_name'
-      ].join(" ");
-      var it = new Scanner(allInputs);
-      while (it.moveNext() && it.current.type != TokenType.endOfFile) {
-        expect(allRecognizedTokenTypes.remove(it.current.type), equals(true),
-            reason: "`${it.current.type.name}` has matched twice");
-      }
-      expect(allRecognizedTokenTypes, equals([]));
-    });
-  });
-
   group('Scanner', () {
-    test('recognizes correct token positions', () {
-      var scanner = new Scanner('''
-first second
-  third
-fourth fifth''');
-      var expected = [
-        new Token(null, 'first', new Point(0, 0)),
-        new Token(null, 'second', new Point(6, 0)),
-        new Token(null, 'third', new Point(3, 1)),
-        new Token(null, 'fourth', new Point(0, 2)),
-        new Token(null, 'fifth', new Point(7, 2)),
-        new Token(null, null, new Point(12, 2))
+    test("matches only language terminals", () {
+      // http://en.cppreference.com/w/c/language/operator_precedence
+      var operators = '''
+        ++ -- ( ) [ ] . ->
+        ++ -- + - ! ~ * & sizeof
+        * / %
+        + -
+        << >>
+        < <= > >=
+        == !=
+        &
+        ^
+        |
+        &&
+        ||
+        ? :
+        = += -= *= /= %= <<= >>= &= ^= |=
+        ,
+        { } ;
+      '''
+          .trim()
+          .split(new RegExp(r'\s+'));
+
+      // http://en.cppreference.com/w/c/keyword
+      var keywordsExceptTypenames = '''
+        auto
+        break
+        case const continue
+        default do
+        else enum extern
+        for
+        goto
+        if inline
+        long
+        register restrict return
+        short signed sizeof static struct switch
+        typedef
+        union unsigned
+        volatile
+        while
+      '''
+          .trim()
+          .split(new RegExp(r'\s'));
+      var exampleLiterals = [
+        '4',
+        '4.',
+        "'c'",
+        '"example string"',
+        'example_name'
       ];
-      while (scanner.moveNext()) {
-        expect(scanner.current.value, equals(expected.first.value));
-        expect(scanner.current.position, equals(expected.first.position));
-        expected.removeAt(0);
-      }
+      var allTerminalTypesWithoutDuplicates = (new Set()
+            ..addAll(operators)
+            ..addAll(keywordsExceptTypenames)
+            ..addAll(exampleLiterals))
+          .join(' ');
+
+      // GIVEN a source code that contains all different types of tokens
+      var source = new SourceFile(allTerminalTypesWithoutDuplicates);
+      // WHEN I scan it into tokens
+      var scanner = new Scanner(source);
+      var tokens = [];
+      while (scanner.moveNext()) tokens.add(scanner.current);
+      tokens.removeLast();
+      // THEN every token `TokenType` has matched once
+      expect(tokens.length, equals(TokenType.values.length));
+      expect(new Set.from(tokens.map((t) => t.type)),
+          equals(new Set.from(TokenType.values)));
+    });
+
+    test('`stringLiteral` extracts correct value', () {
+      var source, token;
+
+      // GIVEN a source `"foo"`
+      source = new SourceFile('"foo"');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the value `foo` without quotes is extracted
+      expect(token.value, equals('foo'));
+
+      // GIVEN a source `"\""`
+      source = new SourceFile(r'"\""');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the value `"` extracted, recognizing the escaped backslash
+      expect(token.value, equals('"'));
+
+      // GIVEN a source `"\\\\\x41\n\u03b1"`
+      source = new SourceFile(r'"\\\\\x41\n\u03b1"');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the escaped values (__two backslashes, ASCII uppercase `A`,
+      //  linebreak, lowercase alpha__) are extracted
+      expect(token.value, equals(r'\\A' + '\nα'));
+    });
+
+    test('extract character literals', () {
+      // GIVEN a source `'a'`
+      var source = new SourceFile("'a'");
+      // WHEN that source is tokenized
+      var token = (new Scanner(source)..moveNext()).current;
+      // THEN the value `a` without quotes is extracted
+      expect(token.value, equals('a'));
+    });
+
+    test('extract int literals', () {
+      var source, token;
+
+      // GIVEN the literal `42ul`
+      source = new SourceFile('42ul');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the decimal number 42 of type `unsigned long` is extracted
+      expect(token.value, equals({'value': 42, 'type': NumberType.uint64}));
+
+      // GIVEN the literal `052`
+      source = new SourceFile('052');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the octal number 52 (decimal 42) of type `signed int` is extracted
+      expect(token.value, equals({'value': 42, 'type': NumberType.sint32}));
+
+      // GIVEN the literal `0x2a`
+      source = new SourceFile('0x2a');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the hex number 0x2a (decimal 42) is extracted
+      expect(token.value, equals({'value': 42, 'type': NumberType.sint32}));
+    });
+
+    test('extract floating literals', () {
+      var source, token;
+
+      // GIVEN the literal `123.456e-67`
+      source = new SourceFile('123.456e-67');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the floating point number 123.456e-67 is extracted
+      expect(
+          token.value, equals({'value': 123.456e-67, 'type': NumberType.fp64}));
+
+      // GIVEN the literal `.1E4f`
+      source = new SourceFile('.1E4f');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the floating point number 0.1e4 of type float is extracted
+      expect(token.value, equals({'value': .1e4, 'type': NumberType.fp32}));
+
+      // GIVEN the literal `58.`
+      source = new SourceFile('58.');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the floating point number 58 is extracted
+      expect(token.value, equals({'value': 58.0, 'type': NumberType.fp64}));
+
+      // GIVEN the literal `4e2d`
+      source = new SourceFile('4e2d');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the floating point number 4e2 of type double is extracted
+      expect(token.value, equals({'value': 4e2, 'type': NumberType.fp64}));
     });
   });
 }
