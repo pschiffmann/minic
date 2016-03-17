@@ -2,7 +2,7 @@
 /// atomic part of the code, like operators, keywords, or names. We do this
 /// because it is easier to implement the parser if it doesn't need to handle
 /// the text processing that recognizes these patterns.
-library minic.token;
+library minic.src.scanner;
 
 import 'package:source_span/source_span.dart';
 import 'package:verbose_regexp/verbose_regexp.dart';
@@ -447,7 +447,7 @@ class TokenType {
       'charLiteral', r"'([^'\\]|\\[a-z0-9\\]+)'", true, _charExtractor);
 
   /// TokenType `name`
-  static const TokenType names = const TokenType('names', r'[a-z_]\w*', true);
+  static const TokenType identifier = const TokenType('identifier', r'[a-z_]\w*', true);
 
   /// A token with this type is emitted by [Scanner] to indicate that it has
   /// reached the end of the source code. This way you can always compare
@@ -537,7 +537,7 @@ class TokenType {
     floatingLiteral,
     stringLiteral,
     charLiteral,
-    names,
+    identifier,
   ];
 
   String toString() => "TokenType('$name')";
