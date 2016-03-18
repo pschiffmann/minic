@@ -591,10 +591,9 @@ class Scanner extends PeekIterator<Token> {
             var value;
             try {
               value = tokenType.valueExtractor(match);
-            } catch (e) {
-              if (e is UnrecognizedSourceCodeException)
-                e.location = source.location(offset);
-              throw e;
+            } on UnrecognizedSourceCodeException catch (e) {
+              throw new UnrecognizedSourceCodeException(
+                  e.message, source.location(offset));
             }
 
             yield new Token(tokenType, value, source.span(offset, match.end));

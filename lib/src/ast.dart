@@ -179,27 +179,52 @@ class FunctionDefinition extends Definition {
 /// labeled. This class is empty because the different kinds of labels
 /// ([GotoLabel], [CaseLabel], [DefaultLabel]) don't share any properties or
 /// behaviour.
-abstract class Label {}
+abstract class Label {
+  const Label();
+}
 
 class GotoLabel extends Label {
   String identifier;
 
   GotoLabel(this.identifier);
+
+  @override
+  bool operator ==(other) {
+    if (other is! GotoLabel) return false;
+    return identifier == other.identifier;
+  }
 }
 
 class CaseLabel extends Label {
   Expression value;
 
   CaseLabel(this.value);
+
+  @override
+  bool operator ==(other) {
+    if (other is! CaseLabel) return false;
+    return value.evaluate() == other.value.evaluate();
+  }
 }
 
-class DefaultLabel extends Label {}
+class DefaultLabel extends Label {
+  const DefaultLabel();
+}
 
 /// Represents a [statement][1].
 ///
 /// [1]: http://en.cppreference.com/w/c/language/statements
 abstract class Statement extends AstNode {
   List<Label> labels;
+
+  /// Return all statements underneath this AST branch, including `this`, that
+  /// are labeled.
+  Iterable<Statement> get labeledStatements sync* {
+    if (!labels.isEmpty) yield this;
+    for (var child in children) {
+      if (child is Statement) yield* child.labeledStatements;
+    }
+  }
 
   Statement(this.labels, AstNode parent) : super(parent);
 }
@@ -250,6 +275,21 @@ class IfStatement extends Statement {
       : super(labels, parent);
 }
 
+class SwitchStatement extends Statement {
+  /// Token of type `kw_switch`.
+  Token switchKeyword;
+
+  /// The expression that selects to which branch to switch.
+  Expression value;
+
+  SwitchStatement(
+      {@required this.switchKeyword,
+      @required this.value,
+      @required List<Label> labels,
+      @required AstNode parent})
+      : super(labels, parent);
+}
+
 /// Expression statement.
 class ExpressionStatement extends Statement {
   Expression expression;
@@ -265,8 +305,12 @@ class ExpressionStatement extends Statement {
 }
 
 /// Placeholder
-class Expression extends AstNode {
+abstract class Expression extends AstNode {
+  VariableType type;
+
   Expression({@required AstNode parent}) : super(parent);
+
+  Expression evaluate();
 }
 
 /// Thrown by [Namespace.lookUp] if `identifier` was looked up and not found.
