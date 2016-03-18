@@ -3,7 +3,7 @@
 /// You can parse code into this structure using the `minic.src.parser` library.
 ///
 /// [1]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
-library minic.src.scope;
+library minic.src.ast;
 
 import 'dart:collection' show LinkedHashMap;
 
@@ -48,9 +48,15 @@ abstract class Scope implements AstNode {
   Scope get parentScope => parents.firstWhere((AstNode node) => node is Scope);
 
   /// Add `definition` to this scope. Set `definition.parent` to `this`.
+  ///
+  /// Throw [NameCollisionException] when an entity with the same `identifier`
+  /// already exists.
   void define(Definition definition) {
+    var id = definition.identifier;
+    if (definitions.containsKey(id))
+      throw new NameCollisionException(definitions[id], definition);
     definition.parent = this;
-    definitions[definition.identifier] = definition;
+    definitions[id] = definition;
   }
 
   /// Find a definition with `identifier` or throw [UndefinedNameException].
@@ -65,7 +71,7 @@ abstract class Scope implements AstNode {
 /// namespace. All top-level functions, typedefs and global variables are added
 /// to this scope.
 ///
-/// The `parent` of a namespace is `null`.
+/// The `parent` of a namespace object is `null`.
 class Namespace extends AstNode with Scope {
   Namespace() : super(null);
 
@@ -122,13 +128,15 @@ class VoidType extends VariableType {
 class PointerType extends VariableType {
   VariableType target;
 
-  PointerType(String identifier, int size, this.target)
-      : super(identifier, size);
+  PointerType({@required VariableType target, @required int size})
+      : super(target.identifier + '*', size),
+        target = target;
 }
 
 /// Represents a variable definition in an expression, a function argument list,
 /// or the global namespace.
 class Variable extends Definition {
+  Token constToken;
   Token variableTypeName;
   Token variableName;
   VariableType variableType;
@@ -136,8 +144,12 @@ class Variable extends Definition {
   /// The expression that initializes this value, or `null`.
   Expression initializer;
 
-  Variable(this.variableTypeName, Token variableName, this.variableType,
-      this.initializer)
+  Variable(
+      {@required this.constToken,
+      @required this.variableTypeName,
+      @required Token variableName,
+      @required this.variableType,
+      @required this.initializer})
       : super(variableName.value),
         variableName = variableName;
 }
@@ -150,7 +162,9 @@ class FunctionDefinition extends Definition {
   CompoundStatement body;
 
   FunctionDefinition(
-      Token functionName, this.returnValue, this.parameters, this.body)
+      {@required Token functionName,
+      @required this.returnValue,
+      @required this.parameters})
       : super(functionName.value),
         functionName = functionName;
 
@@ -210,8 +224,10 @@ class CompoundStatement extends Statement with Scope {
     yield* statements;
   }
 
-  CompoundStatement(this.openingBracket,
-      {@required List<Label> labels, @required AstNode parent})
+  CompoundStatement(
+      {@required this.openingBracket,
+      @required List<Label> labels,
+      @required AstNode parent})
       : super(labels, parent);
 }
 
@@ -226,8 +242,11 @@ class IfStatement extends Statement {
     yield body;
   }
 
-  IfStatement(this.expression, this.body,
-      {@required List<Label> labels, @required AstNode parent})
+  IfStatement(
+      {@required this.expression,
+      @required this.body,
+      @required List<Label> labels,
+      @required AstNode parent})
       : super(labels, parent);
 }
 
@@ -238,8 +257,10 @@ class ExpressionStatement extends Statement {
   @override
   Iterable<AstNode> get children => <AstNode>[expression];
 
-  ExpressionStatement(this.expression,
-      {@required List<Label> labels, @required AstNode parent})
+  ExpressionStatement(
+      {@required this.expression,
+      @required List<Label> labels,
+      @required AstNode parent})
       : super(labels, parent);
 }
 
@@ -256,4 +277,16 @@ class UndefinedNameException implements Exception {
   String identifier;
 
   UndefinedNameException(this.identifier);
+}
+
+/// Thrown by [Scope]`.define` if the identifier of the assigned definition
+/// already exists in that scope.
+class NameCollisionException implements Exception {
+  /// The definition that already existed in the scope.
+  Definition first;
+
+  /// The definition that was added last and caused the collision with `first`.
+  Definition second;
+
+  NameCollisionException(this.first, this.second);
 }
