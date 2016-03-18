@@ -447,7 +447,8 @@ class TokenType {
       'charLiteral', r"'([^'\\]|\\[a-z0-9\\]+)'", true, _charExtractor);
 
   /// TokenType `name`
-  static const TokenType identifier = const TokenType('identifier', r'[a-z_]\w*', true);
+  static const TokenType identifier =
+      const TokenType('identifier', r'[a-z_]\w*', true);
 
   /// A token with this type is emitted by [Scanner] to indicate that it has
   /// reached the end of the source code. This way you can always compare
@@ -613,17 +614,35 @@ class Scanner extends PeekIterator<Token> {
     return curr;
   }
 
-  /// Match [current] against `expected`.
-  Token checkCurrent(List<TokenType> expected) {
+  /// If `current.type` is one of `expected`, return `current` and forward the
+  /// Scanner by one token. Else return `null`.
+  Token consumeIfMatches(List<TokenType> expected) {
+    if (!expected.contains(current)) return null;
+    var curr = current;
+    moveNext();
+    return curr;
+  }
+
+  /// Return [current] if its type is one of `expected`, or throw
+  /// [UnexpectedTokenException].
+  Token requireCurrent(List<TokenType> expected) {
     _assertTypeMatchesExpected(current, expected);
     return current;
   }
 
-  /// Match [next] against `expected`.
-  Token checkNext(List<TokenType> expected) {
+  /// Return [next] if its type is one of `expected`, or throw
+  /// [UnexpectedTokenException].
+  Token requireNext(List<TokenType> expected) {
     _assertTypeMatchesExpected(next, expected);
     return next;
   }
+
+  /// Return `true` if the type of [current] is one of `expected`.
+  bool checkCurrent(List<TokenType> expected) =>
+      expected.contains(current.type);
+
+  /// Return `true` if the type of [next] is one of `expected`.
+  bool checkNext(List<TokenType> expected) => expected.contains(next.type);
 
   /// Throw an [UnexpectedTokenException] if `token` is null or its type
   /// doesn't match the `expected` ones.
