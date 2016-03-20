@@ -106,20 +106,6 @@ class Parser {
     currentScope = null;
   }
 
-  /// Parse and return a [VariableType]. Throw `UnexpectedTokenException` if
-  /// the current token is not an identifier.
-  ///
-  /// TODO: Handle `unsigned` etc tokens
-  VariableType parseType() {
-    var typeToken = scanner.consume([TokenType.identifier]);
-    var type = currentScope.lookUp(typeToken.value);
-    while (scanner.current.type == TokenType.star) {
-      type = new PointerType(target: type, size: pointerSize);
-      scanner.moveNext();
-    }
-    return type;
-  }
-
   /// Parse a single namespace-level definition and add it to [currentScope].
   void parseNamespaceDefinition() {
     switch (scanner.current.type) {
@@ -172,7 +158,8 @@ class Parser {
         returnValue: returnValue,
         parameters: parameters);
     currentScope.define(function);
-    parseCompoundStatement((stmt) => function..body = stmt, variables: parameters);
+    parseCompoundStatement((stmt) => function..body = stmt,
+        variables: parameters);
   }
 
   /// Parse definition and optional initializer expression of a global variable,
@@ -193,6 +180,18 @@ class Parser {
         initializer: initializer));
   }
 
+  ///
+  Statement parseStatement(linkToParent link) {
+    var labels = parseLabels();
+    switch (scanner.current.type) {
+      case TokenType.lcbracket:
+        return parseCompoundStatement(link, labels: labels);
+      default:
+        throw new UnexpectedTokenException(
+            'Invalid token at the start of a statement', scanner.current);
+    }
+  }
+
   /// Parse and return a compound statement. Sets the newly created object as
   /// `currentScope`.
   ///
@@ -203,8 +202,8 @@ class Parser {
       Iterable<Definition> variables: const []}) {
     var openingBracket = scanner.consume([TokenType.lcbracket]);
     var parentScope = currentScope;
-    var compoundStatement = currentScope = new CompoundStatement(
-        openingBracket: openingBracket, labels: labels);
+    var compoundStatement = currentScope =
+        new CompoundStatement(openingBracket: openingBracket, labels: labels);
 
     compoundStatement.parent = link(compoundStatement);
     for (var variable in variables) {
@@ -218,6 +217,44 @@ class Parser {
     compoundStatement.closingBracket = scanner.consume([TokenType.rcbracket]);
     currentScope = parentScope;
     return compoundStatement;
+  }
+
+  /// Parse `scanner.current` as expression.
+  ///
+  /// This method uses a Pratt parser approach (see library docs):
+  /// The `precedence` parameter is used by [PrefixParselet] and [InfixParselet]
+  /// and controls the binding of the parsed tokens to its left and right side.
+  /// For example, if we parse `x - y * z` and the subtract and multiply
+  /// operators have a precedence of 11 and 12, `y` will bind to multiplication
+  /// because it has the higher precedence.
+  Expression parseExpression([int precedence = 0]) {
+    var parselet = prefixParselets[scanner.current.type];
+    if (parselet == null)
+      throw new UnexpectedTokenException(
+          'Invalid start of expression', scanner.current);
+
+    var left = parselet.parse(this);
+
+    while ((parselet = infixParselets[scanner.current.type]) != null &&
+        precedence < parselet.precedence) {
+      left = parselet.parse(this, left);
+    }
+
+    return left;
+  }
+
+  /// Parse and return a [VariableType]. Throw `UnexpectedTokenException` if
+  /// the current token is not an identifier.
+  ///
+  /// TODO: Handle `unsigned` etc tokens
+  VariableType parseType() {
+    var typeToken = scanner.consume([TokenType.identifier]);
+    var type = currentScope.lookUp(typeToken.value);
+    while (scanner.current.type == TokenType.star) {
+      type = new PointerType(target: type, size: pointerSize);
+      scanner.moveNext();
+    }
+    return type;
   }
 
   /// Parse and return a list of statement labels.
@@ -267,42 +304,6 @@ class Parser {
             '`switch` statement expression',
             token);
     }
-  }
-
-  ///
-  Statement parseStatement(linkToParent link) {
-    var labels = parseLabels();
-    switch (scanner.current.type) {
-      case TokenType.lcbracket:
-        return parseCompoundStatement(link, labels: labels);
-      default:
-        throw new UnexpectedTokenException(
-            'Invalid token at the start of a statement', scanner.current);
-    }
-  }
-
-  /// Parse `scanner.current` as expression.
-  ///
-  /// This method uses a Pratt parser approach (see library docs):
-  /// The `precedence` parameter is used by [PrefixParselet] and [InfixParselet]
-  /// and controls the binding of the parsed tokens to its left and right side.
-  /// For example, if we parse `x - y * z` and the subtract and multiply
-  /// operators have a precedence of 11 and 12, `y` will bind to multiplication
-  /// because it has the higher precedence.
-  Expression parseExpression([int precedence = 0]) {
-    var parselet = prefixParselets[scanner.current.type];
-    if (parselet == null)
-      throw new UnexpectedTokenException(
-          'Invalid start of expression', scanner.current);
-
-    var left = parselet.parse(this);
-
-    while ((parselet = infixParselets[scanner.current.type]) != null &&
-        precedence < parselet.precedence) {
-      left = parselet.parse(this, left);
-    }
-
-    return left;
   }
 }
 
