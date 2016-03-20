@@ -16,8 +16,6 @@ abstract class AstNode {
   /// The parent node in the AST.
   AstNode parent;
 
-  AstNode(this.parent);
-
   /// Returns an Iterable of all child nodes. By default, this Iterable is
   /// empty.
   Iterable<AstNode> get children => const Iterable.empty();
@@ -73,7 +71,7 @@ abstract class Scope implements AstNode {
 ///
 /// The `parent` of a namespace object is `null`.
 class Namespace extends AstNode with Scope {
-  Namespace() : super(null);
+  Namespace();
 
   @override
   Iterable<AstNode> get children => definitions.values;
@@ -95,7 +93,7 @@ abstract class Definition extends AstNode {
   /// The name of this function, variable or type.
   String identifier;
 
-  Definition(this.identifier) : super(null);
+  Definition(this.identifier);
 }
 
 /// Superclass for native types, typedefs, structs, enums and unions.
@@ -226,7 +224,7 @@ abstract class Statement extends AstNode {
     }
   }
 
-  Statement(this.labels, AstNode parent) : super(parent);
+  Statement(this.labels);
 }
 
 /// Represents a code block surrounded by curly brackets, including the bodies
@@ -251,9 +249,8 @@ class CompoundStatement extends Statement with Scope {
 
   CompoundStatement(
       {@required this.openingBracket,
-      @required List<Label> labels,
-      @required AstNode parent})
-      : super(labels, parent);
+      @required List<Label> labels})
+      : super(labels);
 }
 
 /// If statement.
@@ -270,9 +267,8 @@ class IfStatement extends Statement {
   IfStatement(
       {@required this.expression,
       @required this.body,
-      @required List<Label> labels,
-      @required AstNode parent})
-      : super(labels, parent);
+      @required List<Label> labels})
+      : super(labels);
 }
 
 class SwitchStatement extends Statement {
@@ -285,9 +281,8 @@ class SwitchStatement extends Statement {
   SwitchStatement(
       {@required this.switchKeyword,
       @required this.value,
-      @required List<Label> labels,
-      @required AstNode parent})
-      : super(labels, parent);
+      @required List<Label> labels})
+      : super(labels);
 }
 
 /// Expression statement.
@@ -299,16 +294,15 @@ class ExpressionStatement extends Statement {
 
   ExpressionStatement(
       {@required this.expression,
-      @required List<Label> labels,
-      @required AstNode parent})
-      : super(labels, parent);
+      @required List<Label> labels})
+      : super(labels);
 }
 
 /// Placeholder
 abstract class Expression extends AstNode {
   VariableType type;
 
-  Expression({@required AstNode parent}) : super(parent);
+  Expression();
 
   Expression evaluate();
 }

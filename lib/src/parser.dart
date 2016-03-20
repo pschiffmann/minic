@@ -37,6 +37,10 @@ List<Definition> basicTypes = <Definition>[
 Map<TokenType, PrefixParselet> prefixParselets = {};
 Map<TokenType, InfixParselet> infixParselets = {};
 
+/// Callback function that establishes the child relation between a [Statement]
+/// node and its parent. Return the parent node.
+typedef AstNode linkToParent(AstNode child);
+
 /// This class controls the parsing process of a source code into an AST.
 ///
 /// To use it, you need to create a new parser, then call [parse] on it. That
@@ -46,9 +50,7 @@ class Parser {
   ///
   /// When a `parse*` method is called, [_scanner.current] contains the first
   /// token it should process.
-  Scanner _scanner;
-
-  Scanner get scanner => _scanner;
+  Scanner scanner;
 
   /// The root of the parsed AST. This property is `null` until you call
   /// [parse].
@@ -68,7 +70,7 @@ class Parser {
   FunctionDefinition get function => currentScope.parents
       .firstWhere((node) => node is FunctionDefinition, orElse: () => null);
 
-  Parser(this._scanner, this.pointerSize);
+  Parser(this.scanner, this.pointerSize);
 
   /// Start the parsing process.
   ///
@@ -85,9 +87,20 @@ class Parser {
       currentScope.define(definition);
     }
 
-    while (scanner.current.type != TokenType.endOfFile) {
+    scanner.moveNext();
+    while (!scanner.checkCurrent([TokenType.endOfFile])) {
       parseNamespaceDefinition();
     }
+
+    var main = currentScope.lookUp('main');
+    if (main is! FunctionDefinition)
+      throw new LanguageViolationException('`main` not found', null);
+    if (main.returnValue != currentScope.lookUp('int'))
+      throw new LanguageViolationException(
+          '`main` must return `int`', main.functionName);
+    if (!main.parameters.isEmpty)
+      throw new LanguageViolationException(
+          '`main` must not expect function arguments', main.functionName);
 
     namespace = currentScope;
     currentScope = null;
@@ -130,7 +143,7 @@ class Parser {
             'The `union` keyword is currently not supported.');
       default:
         throw new UnexpectedTokenException(
-            'Invalid token in namespace scope', scanner.current);
+            'Invalid token on namespace level', scanner.current);
     }
   }
 
@@ -150,8 +163,7 @@ class Parser {
           variableName: parameterName,
           variableType: parameterType,
           initializer: null));
-      if (!scanner.checkCurrent([TokenType.comma])) break;
-      scanner.consume();
+      if (scanner.consumeIfMatches([TokenType.comma]) == null) break;
     }
     scanner.consume([TokenType.rbracket]);
 
@@ -160,6 +172,7 @@ class Parser {
         returnValue: returnValue,
         parameters: parameters);
     currentScope.define(function);
+    parseCompoundStatement((stmt) => function..body = stmt, variables: parameters);
   }
 
   /// Parse definition and optional initializer expression of a global variable,
@@ -180,19 +193,29 @@ class Parser {
         initializer: initializer));
   }
 
-  /// Parse and return a compound statement. Until this method returns,
-  /// `currentScope` contains the newly created object.
+  /// Parse and return a compound statement. Sets the newly created object as
+  /// `currentScope`.
   ///
-  /// If `function` is passed as argument, that object is used as `parent` for
-  /// the compound statement. The default parent is `currentScope`.
-  CompoundStatement parseCompoundStatement(
-      {List<Label> labels: const <Label>[], FunctionDefinition function}) {
+  /// If `variables` are passed, they are added to this scope. This is useful
+  /// for function arguments.
+  CompoundStatement parseCompoundStatement(linkToParent link,
+      {Iterable<Label> labels: const <Label>[],
+      Iterable<Definition> variables: const []}) {
     var openingBracket = scanner.consume([TokenType.lcbracket]);
     var parentScope = currentScope;
     var compoundStatement = currentScope = new CompoundStatement(
-        openingBracket: openingBracket, labels: labels, parent: null);
+        openingBracket: openingBracket, labels: labels);
 
-    scanner.consume([TokenType.rcbracket]);
+    compoundStatement.parent = link(compoundStatement);
+    for (var variable in variables) {
+      compoundStatement.define(variable);
+    }
+
+    while (!scanner.checkCurrent([TokenType.rcbracket])) {
+      parseStatement((stmt) => compoundStatement..statements.add(stmt));
+    }
+
+    compoundStatement.closingBracket = scanner.consume([TokenType.rcbracket]);
     currentScope = parentScope;
     return compoundStatement;
   }
@@ -247,13 +270,14 @@ class Parser {
   }
 
   ///
-  Statement parseStatement() {
+  Statement parseStatement(linkToParent link) {
     var labels = parseLabels();
     switch (scanner.current.type) {
       case TokenType.lcbracket:
-        return parseCompoundStatement(labels: labels);
+        return parseCompoundStatement(link, labels: labels);
       default:
-        throw new UnexpectedTokenException('Invalid token at the start of a statement', scanner.current);
+        throw new UnexpectedTokenException(
+            'Invalid token at the start of a statement', scanner.current);
     }
   }
 
