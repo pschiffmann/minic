@@ -8,7 +8,7 @@ library minic.src.ast;
 import 'dart:collection' show LinkedHashMap;
 
 import 'package:meta/meta.dart';
-import 'memory.dart' show NumberType, numberTypeByteCount;
+import 'memory.dart';
 import 'scanner.dart' show Token;
 
 ///
@@ -102,6 +102,10 @@ abstract class VariableType extends Definition {
   int size;
 
   VariableType(String identifier, this.size) : super(identifier);
+
+  /// Return `true` if variables of this variable type can be implicitly casted
+  /// to `other`. For non-[BasicType]s this is always `false`.
+  bool canBeConvertedTo(VariableType other) => false;
 }
 
 /// Represents a [basic type](http://en.cppreference.com/w/c/language/type).
@@ -113,6 +117,12 @@ class BasicType extends VariableType {
   BasicType(String identifier, NumberType numberType)
       : super(identifier, numberType.size),
         numberType = numberType;
+
+  bool canBeConvertedTo(VariableType other) {
+    if (other is! BasicType) return false;
+    if (numberType != (other as BasicType).numberType) return false;
+    return size >= other.size;
+  }
 }
 
 /// Represents the void type for function return values. This object is never
@@ -248,8 +258,7 @@ class CompoundStatement extends Statement with Scope {
   }
 
   CompoundStatement(
-      {@required this.openingBracket,
-      @required List<Label> labels})
+      {@required this.openingBracket, @required List<Label> labels})
       : super(labels);
 }
 
@@ -292,8 +301,20 @@ class ExpressionStatement extends Statement {
   @override
   Iterable<AstNode> get children => <AstNode>[expression];
 
-  ExpressionStatement(
-      {@required this.expression,
+  ExpressionStatement({@required this.expression, @required List<Label> labels})
+      : super(labels);
+}
+
+class ReturnStatement extends Statement {
+  Token returnKeyword;
+  Expression expression;
+
+  @override
+  Iterable<AstNode> get children => <AstNode>[expression];
+
+  ReturnStatement(
+      {@required this.returnKeyword,
+      @required this.expression,
       @required List<Label> labels})
       : super(labels);
 }
@@ -304,7 +325,23 @@ abstract class Expression extends AstNode {
 
   Expression();
 
-  Expression evaluate();
+  evaluate();
+}
+
+///
+class IntegerLiteral extends Expression {
+  /// Always one of the integer types.
+  BasicType type;
+
+  /// The integer value of the literal.
+  int value;
+  Token literalToken;
+
+  IntegerLiteral(
+      {@required this.value, @required this.type, @required this.literalToken});
+
+  /// Return `value`.
+  evaluate() => value;
 }
 
 /// Thrown by [Namespace.lookUp] if `identifier` was looked up and not found.

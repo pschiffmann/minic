@@ -34,7 +34,12 @@ List<Definition> basicTypes = <Definition>[
   new VoidType()
 ];
 
-Map<TokenType, PrefixParselet> prefixParselets = {};
+BasicType getVariableTypeForNumberType(NumberType numberType) =>
+    basicTypes.firstWhere((t) => (t as BasicType)?.numberType == numberType);
+
+Map<TokenType, PrefixParselet> prefixParselets = <TokenType, PrefixParselet>{
+  TokenType.intLiteral: const IntegerParselet()
+};
 Map<TokenType, InfixParselet> infixParselets = {};
 
 /// Callback function that establishes the child relation between a [Statement]
@@ -180,12 +185,14 @@ class Parser {
         initializer: initializer));
   }
 
-  ///
+  /// Call any of the `parse*Statement` methods, depending on `scanner.current`.
   Statement parseStatement(linkToParent link) {
     var labels = parseLabels();
     switch (scanner.current.type) {
       case TokenType.lcbracket:
         return parseCompoundStatement(link, labels: labels);
+      case TokenType.kw_return:
+        return parseReturnStatement(link, labels);
       default:
         throw new UnexpectedTokenException(
             'Invalid token at the start of a statement', scanner.current);
@@ -217,6 +224,23 @@ class Parser {
     compoundStatement.closingBracket = scanner.consume([TokenType.rcbracket]);
     currentScope = parentScope;
     return compoundStatement;
+  }
+
+  /// Parse and return a return statement. Validate that the return value
+  /// matches the type of the current function.
+  ReturnStatement parseReturnStatement(linkToParent link, List<Label> labels) {
+    var returnKeyword = scanner.consume([TokenType.kw_return]);
+    var expression;
+    if (!scanner.checkCurrent([TokenType.semicolon])) {
+      expression = parseExpression();
+      if (!expression.type.canBeConvertedTo(function.returnValue))
+        throw new LanguageViolationException(
+            'The value type of the `return` expression does not match the one of the enclosing function',
+            returnKeyword);
+    }
+    scanner.consume([TokenType.semicolon]);
+    return new ReturnStatement(
+        returnKeyword: returnKeyword, expression: expression, labels: labels);
   }
 
   /// Parse `scanner.current` as expression.
@@ -322,6 +346,20 @@ abstract class InfixParselet {
   Expression parse(Parser parser, Expression left);
 }
 
+/// Parses [TokenType.intLiteral] into an [IntegerLiteral].
+class IntegerParselet extends PrefixParselet {
+  const IntegerParselet();
+
+  Expression parse(Parser parser) {
+    var literalToken = parser.scanner.consume([TokenType.intLiteral]);
+    return new IntegerLiteral(
+        value: literalToken.value['value'],
+        type: getVariableTypeForNumberType(literalToken.value['type']),
+        literalToken: literalToken);
+  }
+}
+
+/// Thrown to indicate a semantic error, like the use of an undefined name.
 class LanguageViolationException implements Exception {
   String message;
   Token token;
