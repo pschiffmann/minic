@@ -111,7 +111,7 @@ class BasicType extends VariableType {
   NumberType numberType;
 
   BasicType(String identifier, NumberType numberType)
-      : super(identifier, numberTypeByteCount[numberType]),
+      : super(identifier, numberType.size),
         numberType = numberType;
 }
 

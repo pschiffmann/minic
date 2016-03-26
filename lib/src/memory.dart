@@ -10,38 +10,38 @@ int calculateRequiredBytes(int n) => (log(n) / log(256)).ceil();
 ///
 /// Other number encodings are not supported by [ByteData], so we don't support
 /// them either.
-enum NumberType {
-  uint8,
-  uint16,
-  uint32,
-  uint64,
-  sint8,
-  sint16,
-  sint32,
-  sint64,
-  fp32,
-  fp64
+class NumberType {
+  final int size;
+  final String memoryInterpretation;
+
+  int get bitmask => pow(2, 8 * size) - 1;
+
+  const NumberType(this.size, this.memoryInterpretation);
+
+  static const NumberType uint8 = const NumberType(1, 'unsigned');
+  static const NumberType uint16 = const NumberType(2, 'unsigned');
+  static const NumberType uint32 = const NumberType(4, 'unsigned');
+  static const NumberType uint64 = const NumberType(8, 'unsigned');
+  static const NumberType sint8 = const NumberType(1, 'signed');
+  static const NumberType sint16 = const NumberType(2, 'signed');
+  static const NumberType sint32 = const NumberType(4, 'signed');
+  static const NumberType sint64 = const NumberType(8, 'signed');
+  static const NumberType fp32 = const NumberType(4, 'floating point');
+  static const NumberType fp64 = const NumberType(8, 'floating point');
+
+  static const List<NumberType> values = const <NumberType>[
+    uint8,
+    uint16,
+    uint32,
+    uint64,
+    sint8,
+    sint16,
+    sint32,
+    sint64,
+    fp32,
+    fp64
+  ];
 }
-
-/// Number of bytes needed to encode a value as [NumberType].
-final Map<NumberType, int> numberTypeByteCount = {
-  NumberType.uint8: 1,
-  NumberType.uint16: 2,
-  NumberType.uint32: 4,
-  NumberType.uint64: 8,
-  NumberType.sint8: 1,
-  NumberType.sint16: 2,
-  NumberType.sint32: 4,
-  NumberType.sint64: 8,
-  NumberType.fp32: 4,
-  NumberType.fp64: 8
-};
-
-/// Bitmasks that mask the bytes of the respective number type.
-final Map<NumberType, int> numberTypeBitmasks =
-    new Map<NumberType, int>.fromIterable(NumberType.values,
-        key: (numberType) => numberType,
-        value: (numberType) => pow(2, 8 * numberTypeByteCount[numberType]) - 1);
 
 /// Wrapper class around [ByteData]. Its only purpose is to map a [NumberType]
 /// argument to the appropriate named method in ByteData.
@@ -83,7 +83,7 @@ class MemoryBlock {
     if (numberType == NumberType.fp32 || numberType == NumberType.fp64)
       value = value.toDouble();
     else
-      value = value.toInt() & numberTypeBitmasks[numberType];
+      value = value.toInt() & numberType.bitmask;
 
     switch (numberType) {
       case NumberType.uint8:
