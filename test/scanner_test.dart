@@ -112,12 +112,19 @@ void main() {
     test('extract int literals', () {
       var source, token;
 
-      // GIVEN the literal `42ul`
-      source = new SourceFile('42ul');
+      // GIVEN the literal `0ul`
+      source = new SourceFile('0ul');
       // WHEN that source is tokenized
       token = (new Scanner(source)..moveNext()).current;
-      // THEN the decimal number 42 of type `unsigned long` is extracted
-      expect(token.value, equals({'value': 42, 'type': NumberType.uint64}));
+      // THEN the decimal number 0 of type `unsigned long` is extracted
+      expect(token.value, equals({'value': 0, 'type': NumberType.uint64}));
+
+      // GIVEN the literal `42`
+      source = new SourceFile('42');
+      // WHEN that source is tokenized
+      token = (new Scanner(source)..moveNext()).current;
+      // THEN the decimal number 42 of type `signed int` is extracted
+      expect(token.value, equals({'value': 42, 'type': NumberType.sint32}));
 
       // GIVEN the literal `052`
       source = new SourceFile('052');

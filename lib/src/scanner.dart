@@ -71,15 +71,16 @@ Map _intExtractor(Match m) {
   var type = NumberType.sint32;
   if (m.group(1) != null) {
     value = int.parse(m.group(1), radix: 16);
-  } else if (m.group(2) != null) {
+  } else if (m.group(2).length > 1 && m.group(2).startsWith('0')) {
     value = int.parse(m.group(2), radix: 8);
   } else {
-    value = int.parse(m.group(3));
+    value = int.parse(m.group(2));
   }
 
-  if (m.group(4) != null) {
-    var isLong = m.group(4).toLowerCase().contains('l');
-    var isUnsigned = m.group(4).toLowerCase().contains('u');
+  var typeFlags = m.group(3);
+  if (typeFlags != null) {
+    var isLong = typeFlags.toLowerCase().contains('l');
+    var isUnsigned = typeFlags.toLowerCase().contains('u');
     if (isLong && isUnsigned)
       type = NumberType.uint64;
     else if (isLong)
@@ -407,11 +408,9 @@ class TokenType {
         (?:
           0x([0-9a-f]+) #  1: hex
           |
-          0([0-7]+)     #  2: octal
-          |
-          ([1-9]\d*)    #  3: decimal
+          (\d+)         #  2: octal and decimal
         )
-        (ul|lu|l|u)?    #  4: type hints
+        (ul|lu|l|u)?    #  3: type hints
         (?!\.)          # NOT followed by a dot ( collision with float constants)
         \b
       ''',
@@ -638,10 +637,10 @@ class Scanner extends PeekIterator<Token> {
 
   /// Return `true` if the type of [current] is one of `expected`.
   bool checkCurrent(List<TokenType> expected) =>
-      expected.contains(current.type);
+      expected.contains(current?.type);
 
   /// Return `true` if the type of [next] is one of `expected`.
-  bool checkNext(List<TokenType> expected) => expected.contains(next.type);
+  bool checkNext(List<TokenType> expected) => expected.contains(next?.type);
 
   /// Throw an [UnexpectedTokenException] if `token` is null or its type
   /// doesn't match the `expected` ones.
@@ -659,6 +658,10 @@ class UnrecognizedSourceCodeException implements Exception {
   String message;
   FileLocation location;
   UnrecognizedSourceCodeException(this.message, this.location);
+
+  @override
+  String toString() =>
+      'UnrecognizedSourceCodeException: $message, ${location.toolString}';
 }
 
 /// Thrown during parsing if [token] can't be processed at this point.
@@ -666,4 +669,7 @@ class UnexpectedTokenException implements Exception {
   String message;
   Token token;
   UnexpectedTokenException(this.message, this.token);
+
+  @override
+  String toString() => 'UnexpectedTokenException: $message, $token';
 }
