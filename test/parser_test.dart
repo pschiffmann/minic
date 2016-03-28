@@ -5,7 +5,7 @@ import 'package:minic/src/parser.dart';
 import 'package:minic/src/scanner.dart';
 
 void main() {
-  group('Parser parses single', () {
+  group('Parser parses a single', () {
     addMainAndParse(code) => new Parser(
         new Scanner(new SourceFile(code +
             '''
@@ -27,6 +27,14 @@ void main() {
       expect(variable, new isInstanceOf<Variable>());
       expect((variable as Variable).variableType,
           equals(parser.namespace.lookUp('int')));
+    });
+
+    test('global variable with initializer', () {
+      var parser = addMainAndParse('int x = 5;');
+      var variable = parser.namespace.lookUp('x');
+      expect(variable, new isInstanceOf<Variable>());
+      expect(((variable as Variable).initializer as IntegerLiteral).value,
+          equals(5));
     });
   });
 }

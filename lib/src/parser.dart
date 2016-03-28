@@ -172,8 +172,8 @@ class Parser {
   void parseGlobalVariable(Token constToken, VariableType variableType) {
     var nameToken = scanner.consume([TokenType.identifier]);
     var initializer;
-    if (scanner.current.type == TokenType.eq) {
-      scanner.moveNext();
+    if (scanner.checkCurrent([TokenType.eq])) {
+      scanner.consume();
       initializer = parseExpression();
     }
     scanner.consume([TokenType.semicolon]);
