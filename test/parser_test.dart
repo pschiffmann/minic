@@ -36,6 +36,21 @@ void main() {
       expect(variable.initializer.value, equals(5));
     });
 
+    test('local variable', () {
+      var parser = addMainAndParse('void f() { int y; }');
+      var variable = parser.namespace.lookUp(('f')).body.lookUp('y');
+      expect(variable, new isInstanceOf<Variable>());
+    });
+
+    test('local variable with initializer', () {
+      var parser = addMainAndParse('void f() { int y = 5; }');
+      var variable = parser.namespace.lookUp(('f')).body.lookUp('y');
+      expect(variable, new isInstanceOf<Variable>());
+      var expression =
+          parser.namespace.lookUp(('f')).body.statements.first.expression;
+      expect(expression, new isInstanceOf<AssignmentExpression>());
+    });
+
     test('integer literal', () {
       var parser = addMainAndParse('void f() { 42; }');
       var expression =

@@ -250,8 +250,7 @@ class Parser {
   }
 
   /// Parse the current tokens as [ExpressionStatement].
-  void parseExpressionStatement(
-      linkToParent link, List<Label> labels) {
+  void parseExpressionStatement(linkToParent link, List<Label> labels) {
     var statement =
         new ExpressionStatement(expression: parseExpression(), labels: labels);
     scanner.consume([TokenType.semicolon]);
@@ -273,9 +272,8 @@ class Parser {
         initializer: null);
 
     var assignmentToken = scanner.consumeIfMatches([TokenType.eq]);
-    var statement;
     if (assignmentToken != null) {
-      statement = new ExpressionStatement(
+      var statement = new ExpressionStatement(
           labels: labels,
           expression: new AssignmentExpression(
               left: new VariableExpression(
@@ -284,6 +282,7 @@ class Parser {
               token: assignmentToken));
       statement.parent = link(statement);
     }
+    scanner.consume([TokenType.semicolon]);
     currentScope.define(variable);
   }
 
@@ -379,11 +378,11 @@ class Parser {
   /// `unsigned`, or an `identifier` token and it refers to a [VariableType].
   bool isCurrentTokenBeginningOfTypeSpecifier() {
     if (scanner.checkCurrent([
-        TokenType.kw_const,
-        TokenType.kw_long,
-        TokenType.kw_short,
-        TokenType.kw_unsigned
-      ])) return true;
+      TokenType.kw_const,
+      TokenType.kw_long,
+      TokenType.kw_short,
+      TokenType.kw_unsigned
+    ])) return true;
     if (scanner.checkCurrent([TokenType.identifier])) {
       try {
         return currentScope.lookUp(scanner.current.value) is VariableType;

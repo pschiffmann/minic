@@ -609,12 +609,8 @@ class Scanner extends PeekIterator<Token> {
 
   /// If `current.type` is one of `expected`, return `current` and forward the
   /// Scanner by one token. Else return `null`.
-  Token consumeIfMatches(List<TokenType> expected) {
-    if (!expected.contains(current)) return null;
-    var curr = current;
-    moveNext();
-    return curr;
-  }
+  Token consumeIfMatches(List<TokenType> expected) =>
+      checkCurrent(expected) ? consume() : null;
 
   /// Return [current] if its type is one of `expected`, or throw
   /// [UnexpectedTokenException].
