@@ -33,8 +33,34 @@ void main() {
       var parser = addMainAndParse('int x = 5;');
       var variable = parser.namespace.lookUp('x');
       expect(variable, new isInstanceOf<Variable>());
-      expect(((variable as Variable).initializer as IntegerLiteral).value,
-          equals(5));
+      expect(variable.initializer.value, equals(5));
+    });
+
+    test('integer literal', () {
+      var parser = addMainAndParse('void f() { 42; }');
+      var expression =
+          parser.namespace.lookUp('f').body.statements.first.expression;
+      expect(expression, new isInstanceOf<NumberLiteralExpression>());
+      expect(expression.type, equals(basicTypes['int']));
+      expect(expression.value, equals(42));
+    });
+
+    test('floating point literal', () {
+      var parser = addMainAndParse('void f() { .5; }');
+      var expression =
+          parser.namespace.lookUp('f').body.statements.first.expression;
+      expect(expression, new isInstanceOf<NumberLiteralExpression>());
+      expect(expression.type, equals(basicTypes['double']));
+      expect(expression.value, equals(0.5));
+    });
+
+    test('char literal', () {
+      var parser = addMainAndParse("void f() { 'b'; }");
+      var expression =
+          parser.namespace.lookUp('f').body.statements.first.expression;
+      expect(expression, new isInstanceOf<NumberLiteralExpression>());
+      expect(expression.type, equals(basicTypes['char']));
+      expect(expression.value, equals(98));
     });
   });
 }

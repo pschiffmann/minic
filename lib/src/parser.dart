@@ -24,21 +24,24 @@ import 'memory.dart' show NumberType;
 
 /// Default predefined types and functions available for use in the program.
 /// This includes the basic types, `malloc`, or `printf`.
-List<Definition> basicTypes = <Definition>[
-  new BasicType('char', NumberType.sint8),
+final Map<NumberType, VariableType> basicTypes = new Map.fromIterable([
+  new BasicType('char', NumberType.uint8),
   new BasicType('short', NumberType.sint16),
   new BasicType('int', NumberType.sint32),
   new BasicType('long', NumberType.sint64),
   new BasicType('float', NumberType.fp32),
   new BasicType('double', NumberType.fp64),
   new VoidType()
-];
+], key: (t) => t.identifier);
 
 BasicType getVariableTypeForNumberType(NumberType numberType) =>
-    basicTypes.firstWhere((t) => (t as BasicType)?.numberType == numberType);
+    basicTypes.values
+        .firstWhere((t) => (t as BasicType)?.numberType == numberType);
 
 Map<TokenType, PrefixParselet> prefixParselets = <TokenType, PrefixParselet>{
-  TokenType.intLiteral: const IntegerParselet()
+  TokenType.intLiteral: const IntegerParselet(),
+  TokenType.floatingLiteral: const FloatingPointParselet(),
+  TokenType.charLiteral: const CharParselet()
 };
 Map<TokenType, InfixParselet> infixParselets = {};
 
@@ -88,7 +91,7 @@ class Parser {
     if (namespace != null) return;
 
     currentScope = new Namespace();
-    for (var definition in basicTypes) {
+    for (var definition in basicTypes.values) {
       currentScope.define(definition);
     }
 
@@ -186,6 +189,8 @@ class Parser {
   }
 
   /// Call any of the `parse*Statement` methods, depending on `scanner.current`.
+  /// Link the newly created object to its parent and the parent to its child,
+  /// using the assigned `link` callback.
   Statement parseStatement(linkToParent link) {
     var labels = parseLabels();
     switch (scanner.current.type) {
@@ -194,8 +199,9 @@ class Parser {
       case TokenType.kw_return:
         return parseReturnStatement(link, labels);
       default:
-        throw new UnexpectedTokenException(
-            'Invalid token at the start of a statement', scanner.current);
+        return isCurrentTokenBeginningOfTypeSpecifier()
+            ? parseLocalVariable(link, labels)
+            : parseExpressionStatement(link, labels);
     }
   }
 
@@ -239,8 +245,51 @@ class Parser {
             returnKeyword);
     }
     scanner.consume([TokenType.semicolon]);
-    return new ReturnStatement(
+    var returnStatement = new ReturnStatement(
         returnKeyword: returnKeyword, expression: expression, labels: labels);
+    returnStatement.parent = link(returnStatement);
+    return returnStatement;
+  }
+
+  /// Parse the current tokens as [ExpressionStatement].
+  ExpressionStatement parseExpressionStatement(
+      linkToParent link, List<Label> labels) {
+    var statement =
+        new ExpressionStatement(expression: parseExpression(), labels: labels);
+    scanner.consume([TokenType.semicolon]);
+    statement.parent = link(statement);
+    return statement;
+  }
+
+  /// Parse the current tokens into a [Variable] and define it in
+  /// [currentScope]. If the variable is initialized with an assignment
+  /// expression, parse it into an [ExpressionStatement] and add it to the AST.
+  ExpressionStatement parseLocalVariable(
+      linkToParent link, List<Label> labels) {
+    var constToken = scanner.consumeIfMatches([TokenType.kw_const]);
+    var type = parseType();
+    var variableName = scanner.consume([TokenType.identifier]);
+    var variable = new Variable(
+        constToken: constToken,
+        variableTypeName: null,
+        variableName: variableName,
+        variableType: type,
+        initializer: null);
+
+    var assignmentToken = scanner.consumeIfMatches([TokenType.eq]);
+    var statement;
+    if (assignmentToken != null) {
+      statement = new ExpressionStatement(
+          labels: labels,
+          expression: new AssignmentExpression(
+              left: new VariableExpression(
+                  identifier: variableName, variable: variable),
+              right: parseExpression(),
+              token: assignmentToken));
+      statement.parent = link(statement);
+    }
+    currentScope.define(variable);
+    return statement;
   }
 
   /// Parse `scanner.current` as expression.
@@ -329,6 +378,24 @@ class Parser {
             token);
     }
   }
+
+  /// Return `true` if the current tokens can be parsed as a type specifier.
+  /// This is the case if the current token is one of `const`, `long`, `short`
+  /// `unsigned`, or an `identifier` token and it refers to a [VariableType].
+  bool isCurrentTokenBeginningOfTypeSpecifier() {
+    if (scanner.checkCurrent([
+        TokenType.kw_const,
+        TokenType.kw_long,
+        TokenType.kw_short,
+        TokenType.kw_unsigned
+      ])) return true;
+    if (scanner.checkCurrent([TokenType.identifier])) {
+      try {
+        return currentScope.lookUp(scanner.current.value) is VariableType;
+      } on UndefinedNameException {}
+    }
+    return false;
+  }
 }
 
 /// Parses the beginning of an expression, like prefix operators or variables.
@@ -346,15 +413,41 @@ abstract class InfixParselet {
   Expression parse(Parser parser, Expression left);
 }
 
-/// Parses [TokenType.intLiteral] into an [IntegerLiteral].
+/// Parses [TokenType.intLiteral] into a [NumberLiteral].
 class IntegerParselet extends PrefixParselet {
   const IntegerParselet();
 
   Expression parse(Parser parser) {
     var literalToken = parser.scanner.consume([TokenType.intLiteral]);
-    return new IntegerLiteral(
+    return new NumberLiteralExpression(
         value: literalToken.value['value'],
         type: getVariableTypeForNumberType(literalToken.value['type']),
+        literalToken: literalToken);
+  }
+}
+
+/// Parses [TokenType.floatLiteral] into a [NumberLiteral].
+class FloatingPointParselet extends PrefixParselet {
+  const FloatingPointParselet();
+
+  Expression parse(Parser parser) {
+    var literalToken = parser.scanner.consume([TokenType.floatingLiteral]);
+    return new NumberLiteralExpression(
+        value: literalToken.value['value'],
+        type: getVariableTypeForNumberType(literalToken.value['type']),
+        literalToken: literalToken);
+  }
+}
+
+/// Parses [TokenType.charLiteral] into a [NumberLiteral].
+class CharParselet extends PrefixParselet {
+  const CharParselet();
+
+  Expression parse(Parser parser) {
+    var literalToken = parser.scanner.consume([TokenType.charLiteral]);
+    return new NumberLiteralExpression(
+        value: literalToken.value,
+        type: basicTypes['char'],
         literalToken: literalToken);
   }
 }

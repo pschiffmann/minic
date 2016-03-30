@@ -328,20 +328,44 @@ abstract class Expression extends AstNode {
   evaluate();
 }
 
-///
-class IntegerLiteral extends Expression {
+/// Represents any number literal, like integers, floats, and chars.
+class NumberLiteralExpression extends Expression {
   /// Always one of the integer types.
   BasicType type;
 
-  /// The integer value of the literal.
-  int value;
+  /// The value of the literal.
+  num value;
   Token literalToken;
 
-  IntegerLiteral(
+  NumberLiteralExpression(
       {@required this.value, @required this.type, @required this.literalToken});
 
   /// Return `value`.
   evaluate() => value;
+}
+
+/// Represents a variable name in an expression, like the `x` in `x++`.
+class VariableExpression extends Expression {
+  /// The token that induced this expression.
+  Token identifier;
+
+  /// The variable referenced by this name.
+  Variable variable;
+
+  VariableExpression({@required this.identifier, @required this.variable});
+
+  evaluate() => throw new UnimplementedError();
+}
+
+class AssignmentExpression extends Expression {
+  VariableExpression left;
+  Expression right;
+  Token token;
+
+  AssignmentExpression(
+      {@required this.left, @required this.right, @required this.token});
+
+  evaluate() => throw new UnimplementedError();
 }
 
 /// Thrown by [Namespace.lookUp] if `identifier` was looked up and not found.
