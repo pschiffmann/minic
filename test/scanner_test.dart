@@ -1,3 +1,4 @@
+import 'dart:convert' show UTF8;
 import 'package:test/test.dart';
 import 'package:minic/src/scanner.dart';
 import 'package:minic/src/memory.dart';
@@ -82,14 +83,14 @@ void main() {
       // WHEN that source is tokenized
       token = (new Scanner(source)..moveNext()).current;
       // THEN the value `foo` without quotes is extracted
-      expect(token.value, equals('foo'));
+      expect(token.value, equals(UTF8.encode('foo')));
 
       // GIVEN a source `"\""`
       source = new SourceFile(r'"\""');
       // WHEN that source is tokenized
       token = (new Scanner(source)..moveNext()).current;
       // THEN the value `"` extracted, recognizing the escaped backslash
-      expect(token.value, equals('"'));
+      expect(token.value, equals(UTF8.encode('"')));
 
       // GIVEN a source `"\\\\\x41\n\u03b1"`
       source = new SourceFile(r'"\\\\\x41\n\u03b1"');
@@ -97,7 +98,7 @@ void main() {
       token = (new Scanner(source)..moveNext()).current;
       // THEN the escaped values (__two backslashes, ASCII uppercase `A`,
       //  linebreak, lowercase alpha__) are extracted
-      expect(token.value, equals(r'\\A' + '\nα'));
+      expect(token.value, equals(UTF8.encode(r'\\A' + '\nα')));
     });
 
     test('extract character literals', () {
@@ -106,7 +107,7 @@ void main() {
       // WHEN that source is tokenized
       var token = (new Scanner(source)..moveNext()).current;
       // THEN the value `a` without quotes is extracted
-      expect(token.value, equals('a'));
+      expect(token.value, equals(97));
     });
 
     test('extract int literals', () {

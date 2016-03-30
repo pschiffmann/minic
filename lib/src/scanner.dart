@@ -4,6 +4,7 @@
 /// the text processing that recognizes these patterns.
 library minic.src.scanner;
 
+import 'dart:convert' show UTF8;
 import 'package:source_span/source_span.dart';
 import 'package:verbose_regexp/verbose_regexp.dart';
 import 'memory.dart' show NumberType;
@@ -40,20 +41,13 @@ final Map<Pattern, ValueExtractor> _stringEscapes = {
 };
 
 /// Used to extract the char value from char literals. Searches for a single
-/// character or a backslash-escaped sequence.
-String _charExtractor(Match m) {
-  var literal = m.group(1);
-  if (literal.length == 1) return literal;
-  if (literal.startsWith(r'\')) {
-    for (var pattern in _stringEscapes.keys) {
-      var escapeSequence = pattern.matchAsPrefix(literal, 1);
-      if (escapeSequence == null) continue;
-      if (escapeSequence.end < literal.length) break;
-      return _stringEscapes[pattern](escapeSequence);
-    }
-    throw new UnrecognizedSourceCodeException('Invalid escape sequence', null);
-  }
-  throw new UnrecognizedSourceCodeException('Invalid char literal', null);
+/// character or a backslash-escaped sequence. Returns the byte value (in range
+/// [0, 255]).
+int _charExtractor(Match m) {
+  var encoded = _stringExtractor(m);
+  if (encoded.length != 1)
+    throw new UnrecognizedSourceCodeException('Invalid char literal', null);
+  return encoded.first;
 }
 
 /// Used to extract [integer literals][1].
@@ -108,8 +102,9 @@ Map _floatingExtractor(Match m) => {
     };
 
 /// Used to extract the string value from string literals. Replaces all
-/// backslash-escaped sequences with the corresponding unicode entities.
-String _stringExtractor(Match m) {
+/// backslash-escaped sequences with the corresponding unicode entities. Returns
+/// a list of byte values in range [0, 255].
+List<int> _stringExtractor(Match m) {
   var literal = m.group(1);
   var progress = 0;
   findEscapeSequences: while (
@@ -123,7 +118,7 @@ String _stringExtractor(Match m) {
       continue findEscapeSequences;
     }
   }
-  return literal;
+  return UTF8.encode(literal);
 }
 
 /// Every token has a type that is used to identify the tokens purpose in the
