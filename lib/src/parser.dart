@@ -191,7 +191,7 @@ class Parser {
   /// Call any of the `parse*Statement` methods, depending on `scanner.current`.
   /// Link the newly created object to its parent and the parent to its child,
   /// using the assigned `link` callback.
-  Statement parseStatement(linkToParent link) {
+  void parseStatement(linkToParent link) {
     var labels = parseLabels();
     switch (scanner.current.type) {
       case TokenType.lcbracket:
@@ -199,18 +199,18 @@ class Parser {
       case TokenType.kw_return:
         return parseReturnStatement(link, labels);
       default:
-        return isCurrentTokenBeginningOfTypeSpecifier()
+        isCurrentTokenBeginningOfTypeSpecifier()
             ? parseLocalVariable(link, labels)
             : parseExpressionStatement(link, labels);
     }
   }
 
-  /// Parse and return a compound statement. Sets the newly created object as
+  /// Parse a [CompoundStatement]. Sets the newly created object as
   /// `currentScope`.
   ///
   /// If `variables` are passed, they are added to this scope. This is useful
   /// for function arguments.
-  CompoundStatement parseCompoundStatement(linkToParent link,
+  void parseCompoundStatement(linkToParent link,
       {Iterable<Label> labels: const <Label>[],
       Iterable<Definition> variables: const []}) {
     var openingBracket = scanner.consume([TokenType.lcbracket]);
@@ -229,12 +229,11 @@ class Parser {
 
     compoundStatement.closingBracket = scanner.consume([TokenType.rcbracket]);
     currentScope = parentScope;
-    return compoundStatement;
   }
 
-  /// Parse and return a return statement. Validate that the return value
-  /// matches the type of the current function.
-  ReturnStatement parseReturnStatement(linkToParent link, List<Label> labels) {
+  /// Parse a [ReturnStatement]. Validate that the return value matches the type
+  /// of the current function.
+  void parseReturnStatement(linkToParent link, List<Label> labels) {
     var returnKeyword = scanner.consume([TokenType.kw_return]);
     var expression;
     if (!scanner.checkCurrent([TokenType.semicolon])) {
@@ -248,24 +247,21 @@ class Parser {
     var returnStatement = new ReturnStatement(
         returnKeyword: returnKeyword, expression: expression, labels: labels);
     returnStatement.parent = link(returnStatement);
-    return returnStatement;
   }
 
   /// Parse the current tokens as [ExpressionStatement].
-  ExpressionStatement parseExpressionStatement(
+  void parseExpressionStatement(
       linkToParent link, List<Label> labels) {
     var statement =
         new ExpressionStatement(expression: parseExpression(), labels: labels);
     scanner.consume([TokenType.semicolon]);
     statement.parent = link(statement);
-    return statement;
   }
 
   /// Parse the current tokens into a [Variable] and define it in
   /// [currentScope]. If the variable is initialized with an assignment
   /// expression, parse it into an [ExpressionStatement] and add it to the AST.
-  ExpressionStatement parseLocalVariable(
-      linkToParent link, List<Label> labels) {
+  void parseLocalVariable(linkToParent link, List<Label> labels) {
     var constToken = scanner.consumeIfMatches([TokenType.kw_const]);
     var type = parseType();
     var variableName = scanner.consume([TokenType.identifier]);
@@ -289,7 +285,6 @@ class Parser {
       statement.parent = link(statement);
     }
     currentScope.define(variable);
-    return statement;
   }
 
   /// Parse `scanner.current` as expression.
