@@ -4,17 +4,17 @@ import 'package:minic/src/ast.dart';
 import 'package:minic/src/parser.dart';
 import 'package:minic/src/scanner.dart';
 
+addMainAndParse(code) => new Parser(
+    new Scanner(new SourceFile(code +
+        '''
+          int main() {
+            return 0;
+          }
+        ''')),
+    4)..parse();
+
 void main() {
   group('Parser parses a single', () {
-    addMainAndParse(code) => new Parser(
-        new Scanner(new SourceFile(code +
-            '''
-              int main() {
-                return 0;
-              }
-            ''')),
-        4)..parse();
-
     test('dummy `main` function', () {
       var parser = addMainAndParse('');
       expect(parser.namespace.lookUp('main'),
@@ -76,6 +76,27 @@ void main() {
       expect(expression, new isInstanceOf<NumberLiteralExpression>());
       expect(expression.type, equals(basicTypes['char']));
       expect(expression.value, equals(98));
+    });
+  });
+
+  group('Parsing [GotoStatement]:', () {
+    test('label before statement can be parsed', () {
+      addMainAndParse('''void f() {
+          a: goto a;
+        }''');
+    });
+
+    test('statement before label can be parsed', () {
+      addMainAndParse('''void f() {
+          goto a;
+          a: return;
+        }''');
+    });
+
+    test('missing target can be detected', () {
+      expect(() => addMainAndParse('''void f() {
+          goto a;
+        }'''), throwsException);
     });
   });
 }

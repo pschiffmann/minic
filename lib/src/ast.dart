@@ -16,9 +16,17 @@ abstract class AstNode {
   /// The parent node in the AST.
   AstNode parent;
 
-  /// Returns an Iterable of all child nodes. By default, this Iterable is
+  /// Return an Iterable of all direct child nodes. By default, this Iterable is
   /// empty.
   Iterable<AstNode> get children => const Iterable.empty();
+
+  /// Return an Iterable of all recursive child nodes.
+  Iterable<AstNode> get recursiveChildren sync* {
+    yield* children;
+    for (var child in children) {
+      if (child != null) yield* child.recursiveChildren;
+    }
+  }
 
   /// Yields all parent nodes, beginning with the direct parent. The last
   /// element will always be a [Namespace].
@@ -259,6 +267,17 @@ class CompoundStatement extends Statement with Scope {
 
   CompoundStatement(
       {@required this.openingBracket, @required List<Label> labels})
+      : super(labels);
+}
+
+/// Goto statement.
+class GotoStatement extends Statement {
+  /// `identifier` token; `token.value` contains the name of the targeted label.
+  Token targetLabel;
+
+  Statement targetStatement;
+
+  GotoStatement({this.targetLabel, @required List<Label> labels})
       : super(labels);
 }
 

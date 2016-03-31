@@ -141,7 +141,9 @@ class Parser {
     }
   }
 
-  /// Parse a function definition, then add it to [currentScope].
+  /// Parse a function definition, then add it to [currentScope]. Validate that
+  /// all [GotoStatement]s have valid targets, and that a [ReturnStatement] is
+  /// reached before the end all non-void functions (TODO).
   void parseFunctionDefinition(Token constToken, VariableType returnValue) {
     var nameToken = scanner.consume([TokenType.identifier]);
     scanner.consume([TokenType.lbracket]);
@@ -168,6 +170,16 @@ class Parser {
     currentScope.define(function);
     parseCompoundStatement((stmt) => function..body = stmt,
         variables: parameters);
+
+    var gotoTargets = function.body.labeledStatements;
+    for (var node in function.recursiveChildren) {
+      if (node is! GotoStatement) continue;
+      node.targetStatement = gotoTargets.firstWhere(
+          (stmt) => stmt.labels.any((label) =>
+              (label as GotoLabel)?.identifier == node.targetLabel.value),
+          orElse: () => throw new LanguageViolationException(
+              'goto target does not exist', node.targetLabel));
+    }
   }
 
   /// Parse definition and optional initializer expression of a global variable,
@@ -198,6 +210,8 @@ class Parser {
         return parseCompoundStatement(link, labels: labels);
       case TokenType.kw_return:
         return parseReturnStatement(link, labels);
+      case TokenType.kw_goto:
+        return parseGotoStatement(link, labels);
       default:
         isCurrentTokenBeginningOfTypeSpecifier()
             ? parseLocalVariable(link, labels)
@@ -229,6 +243,16 @@ class Parser {
 
     compoundStatement.closingBracket = scanner.consume([TokenType.rcbracket]);
     currentScope = parentScope;
+  }
+
+  /// Parse a [GotoStatement]. The validation does *not* happen here, because
+  /// the target might be a label that is not defined yet.
+  void parseGotoStatement(linkToParent link, List<Label> labels) {
+    scanner.consume([TokenType.kw_goto]);
+    var statement = new GotoStatement(
+        targetLabel: scanner.consume([TokenType.identifier]), labels: labels);
+    scanner.consume([TokenType.semicolon]);
+    statement.parent = link(statement);
   }
 
   /// Parse a [ReturnStatement]. Validate that the return value matches the type
@@ -335,7 +359,7 @@ class Parser {
         function.body.labeledStatements.expand((statement) => statement.labels);
     var switchStatements =
         currentScope.parents.where((node) => node is SwitchStatement);
-    loop: while (true) {
+    while (true) {
       var label;
       var token = scanner.current;
       switch (scanner.current.type) {
@@ -354,7 +378,6 @@ class Parser {
         exit: default:
           return parsedLabels;
       }
-      scanner.consume([TokenType.colon]);
       if (functionWideLabels.contains(label) || parsedLabels.contains(label))
         throw new LanguageViolationException(
             'Labels must be unique inside a function', token);
@@ -370,6 +393,8 @@ class Parser {
             'The type of `case` values must match the one of the surrounding '
             '`switch` statement expression',
             token);
+      scanner.consume([TokenType.colon]);
+      parsedLabels.add(label);
     }
   }
 
