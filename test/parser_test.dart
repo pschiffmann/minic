@@ -79,24 +79,31 @@ void main() {
     });
   });
 
-  group('Parsing [GotoStatement]:', () {
-    test('label before statement can be parsed', () {
-      addMainAndParse('''void f() {
-          a: goto a;
-        }''');
-    });
+  group('Parsing statement', () {
+    group('[GotoStatement]:', () {
+      test('label before statement can be parsed', () {
+        var parser = addMainAndParse('''void f() {
+            a: goto a;
+          }''');
+        var statement = parser.namespace.lookUp('f').body.statements.first;
+        expect((statement as GotoStatement).targetStatement, equals(statement));
+      });
 
-    test('statement before label can be parsed', () {
-      addMainAndParse('''void f() {
-          goto a;
-          a: return;
-        }''');
-    });
+      test('statement before label can be parsed', () {
+        var parser = addMainAndParse('''void f() {
+            goto a;
+            a: return;
+          }''');
+        var statements = parser.namespace.lookUp('f').body.statements;
+        expect((statements[0] as GotoStatement).targetStatement,
+            equals(statements[1]));
+      });
 
-    test('missing target can be detected', () {
-      expect(() => addMainAndParse('''void f() {
-          goto a;
-        }'''), throwsException);
+      test('missing target can be detected', () {
+        expect(() => addMainAndParse('''void f() {
+            goto a;
+          }'''), throwsA(const isInstanceOf<LanguageViolationException>()));
+      });
     });
   });
 }
