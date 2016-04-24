@@ -11,23 +11,32 @@ int calculateRequiredBytes(int n) => (log(n) / log(256)).ceil();
 /// Other number encodings are not supported by [ByteData], so we don't support
 /// them either.
 class NumberType {
+
+  static const String unsigned = 'u';
+  static const String signed = 's';
+
+  /// Number of bytes required to store a value of this type.
   final int size;
-  final String memoryInterpretation;
 
-  int get bitmask => pow(2, 8 * size) - 1;
+  /// Always [int] or [double].
+  final Type memoryInterpretation;
 
-  const NumberType(this.size, this.memoryInterpretation);
+  /// One of `NumberType.unsigned` or `NumberType.signed` for integers, `null`
+  /// for double types.
+  final String sign;
 
-  static const NumberType uint8 = const NumberType(1, 'unsigned');
-  static const NumberType uint16 = const NumberType(2, 'unsigned');
-  static const NumberType uint32 = const NumberType(4, 'unsigned');
-  static const NumberType uint64 = const NumberType(8, 'unsigned');
-  static const NumberType sint8 = const NumberType(1, 'signed');
-  static const NumberType sint16 = const NumberType(2, 'signed');
-  static const NumberType sint32 = const NumberType(4, 'signed');
-  static const NumberType sint64 = const NumberType(8, 'signed');
-  static const NumberType fp32 = const NumberType(4, 'floating point');
-  static const NumberType fp64 = const NumberType(8, 'floating point');
+  const NumberType(this.size, this.memoryInterpretation, this.sign);
+
+  static const NumberType uint8 = const NumberType(1, int, unsigned);
+  static const NumberType uint16 = const NumberType(2, int, unsigned);
+  static const NumberType uint32 = const NumberType(4, int, unsigned);
+  static const NumberType uint64 = const NumberType(8, int, unsigned);
+  static const NumberType sint8 = const NumberType(1, int, signed);
+  static const NumberType sint16 = const NumberType(2, int, signed);
+  static const NumberType sint32 = const NumberType(4, int, signed);
+  static const NumberType sint64 = const NumberType(8, int, signed);
+  static const NumberType fp32 = const NumberType(4, double, null);
+  static const NumberType fp64 = const NumberType(8, double, null);
 
   static const List<NumberType> values = const <NumberType>[
     uint8,
@@ -41,6 +50,8 @@ class NumberType {
     fp32,
     fp64
   ];
+
+  String toString() => '${sign ?? ''}$memoryInterpretation${8 * size}';
 }
 
 /// Wrapper class around [ByteData]. Its only purpose is to map a [NumberType]
@@ -74,16 +85,18 @@ class MemoryBlock {
         return buffer.getFloat32(address);
       case NumberType.fp64:
         return buffer.getFloat64(address);
+      default:
+        throw new ArgumentError.value(numberType, 'numberType');
     }
   }
 
   /// Insert value into [buffer] at the specified address, encoded as the
   /// specified number type.
   void setValue(int address, NumberType numberType, num value) {
-    if (numberType == NumberType.fp32 || numberType == NumberType.fp64)
+    if (numberType.memoryInterpretation == double)
       value = value.toDouble();
     else
-      value = value.toInt() & numberType.bitmask;
+      value = value.toInt();
 
     switch (numberType) {
       case NumberType.uint8:
