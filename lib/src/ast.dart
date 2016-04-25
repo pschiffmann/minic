@@ -16,6 +16,10 @@ abstract class AstNode {
   /// The parent node in the AST.
   AstNode parent;
 
+  /// A placeholder variable that can be used to attach meta information to this
+  /// node. It is not used by the parser or the AstNodes themselves.
+  var compilerInformation;
+
   /// Return an Iterable of all direct child nodes. By default, this Iterable is
   /// empty.
   Iterable<AstNode> get children => const Iterable.empty();
