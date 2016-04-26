@@ -6,13 +6,13 @@ import '../memory.dart';
 import '../scanner.dart' show Token;
 
 class VM {
-  /// Combined stack and heap in a continous block of memory.
+  /// Combined stack and heap in a continuous block of memory.
   ///
   /// The stack memory begins at `memory.size - 1` and grows towards zero, while
   /// the heap begins at zero and grows towards infinity.
   MemoryBlock memory;
 
-  /// Points to the lowest currently used address of the stack (in [memory]).
+  /// Points to the lowest currently used byte of the stack (in [memory]).
   int stackPointer;
 
   ///
@@ -82,7 +82,7 @@ class Instruction {
   ///   * `null` if the implementation takes no argument
   ///   * `int` if the value can be directly resolved
   ///   * An [AstNode] if the value can't be determined at the time when this
-  ///     object is created. This happens when a control flow statement jumps
+  ///     object is created. This happens when a control flow instruction jumps
   ///     "forward", targeting an instruction with a higher address that itself.
   var immediateValue;
 
@@ -225,6 +225,8 @@ class LoadRelativeAddressInstruction extends InstructionTemplate {
 class HaltInstruction extends InstructionTemplate {
   String get name => 'halt';
 
+  const HaltInstruction();
+
   void execute(VM vm, _) =>
       throw new HaltSignal(vm.popStack(NumberType.uint32));
 }
@@ -232,6 +234,8 @@ class HaltInstruction extends InstructionTemplate {
 /// Sets the program counter to the immediate value.
 class JumpInstruction extends InstructionTemplate {
   String get name => 'jump';
+
+  const JumpInstruction();
 
   void execute(VM vm, int address) {
     vm.programCounter = address;
@@ -242,6 +246,8 @@ class JumpInstruction extends InstructionTemplate {
 /// address.
 class JumpZeroInstruction extends InstructionTemplate {
   String get name => 'jumpz';
+
+  const JumpZeroInstruction();
 
   void execute(VM vm, int address) {
     if (vm.popStack(NumberType.uint8) == 0) vm.programCounter = address;
@@ -415,28 +421,28 @@ class BitwiseNotInstruction extends InstructionTemplate {
 }
 
 /// Bitwise _and_ of the two top stack elements.
-class BinaryAndInstruction extends ArithmeticOperationInstruction {
+class BitwiseAndInstruction extends ArithmeticOperationInstruction {
   String get name => 'and<${numberType}>';
 
-  const BinaryAndInstruction(numberType) : super(numberType);
+  const BitwiseAndInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a & b;
 }
 
 /// Bitwise _or_ of the two top stack elements.
-class BinaryOrInstruction extends ArithmeticOperationInstruction {
+class BitwiseOrInstruction extends ArithmeticOperationInstruction {
   String get name => 'or<${numberType}>';
 
-  const BinaryOrInstruction(numberType) : super(numberType);
+  const BitwiseOrInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a | b;
 }
 
 /// Bitwise _xor_ of the two top stack elements.
-class BinaryExclusiveOrInstruction extends ArithmeticOperationInstruction {
+class BitwiseExclusiveOrInstruction extends ArithmeticOperationInstruction {
   String get name => 'xor<${numberType}>';
 
-  const BinaryExclusiveOrInstruction(numberType) : super(numberType);
+  const BitwiseExclusiveOrInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a ^ b;
 }
