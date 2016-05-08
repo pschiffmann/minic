@@ -1,15 +1,8 @@
 name: 'minic'
 dependencies:
-  analyzer: '^0.26.1'
-  barback: 'any'
-  browser: 'any'
-  markdown: 'any'
-  mustache: 'any'
   typed_data: 'any'
   verbose_regexp: '^0.1.0'
   meta: '^0.10.0'
   source_span: '^1.2.0'
 dev_dependencies:
   test: '^0.12.0'
-transformers:
-  - minic/transformer/render_instruction_docs
