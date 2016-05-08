@@ -1,10 +1,9 @@
 import 'package:test/test.dart';
-import 'package:minic/src/abstract_machine/instruction_set.dart';
 import 'package:minic/src/abstract_machine/vm.dart';
 import 'package:minic/src/memory.dart';
 
 void main() {
-  VM vm = new VM(null, 256);
+  VM vm = new VM(256);
 
   group('InstructionSet', () {});
   test('AddInstruction sums two stack values', () {
@@ -15,7 +14,7 @@ void main() {
   });
 
   test('PushInstruction pushes value on the stack', () {
-    var sp = vm.stackPointer - numberTypeByteCount[NumberType.uint8];
+    var sp = vm.stackPointer - NumberType.uint8.size;
     (new PushInstruction(NumberType.uint8)).execute(vm, 4);
     expect(vm.stackPointer, sp);
     expect(vm.readMemoryValue(vm.stackPointer, NumberType.uint8), 4);
