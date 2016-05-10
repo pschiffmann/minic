@@ -51,9 +51,8 @@ abstract class AstNode {
 ///
 /// This class must be used as a mixin to [AstNode], as it depends on a
 /// `parents` property.
-abstract class Scope implements AstNode {
-  LinkedHashMap<String, Definition> definitions =
-      new LinkedHashMap<String, Definition>();
+abstract class Scope<E extends Definition> implements AstNode {
+  LinkedHashMap<String, E> definitions = new LinkedHashMap<String, E>();
 
   Scope get parentScope => parents.firstWhere((AstNode node) => node is Scope);
 
@@ -61,7 +60,7 @@ abstract class Scope implements AstNode {
   ///
   /// Throw [NameCollisionException] when an entity with the same `identifier`
   /// already exists.
-  void define(Definition definition) {
+  void define(E definition) {
     var id = definition.identifier;
     if (definitions.containsKey(id))
       throw new NameCollisionException(definitions[id], definition);
@@ -70,6 +69,8 @@ abstract class Scope implements AstNode {
   }
 
   /// Find a definition with `identifier` or throw [UndefinedNameException].
+  /// This method can return objects that are not of type `E`, if the name was
+  /// found in a parent scope.
   Definition lookUp(String identifier) {
     return definitions.containsKey(identifier)
         ? definitions[identifier]
@@ -82,7 +83,7 @@ abstract class Scope implements AstNode {
 /// to this scope.
 ///
 /// The `parent` of a namespace object is `null`.
-class Namespace extends AstNode with Scope {
+class Namespace extends AstNode with Scope<Definition> {
   Namespace();
 
   @override
@@ -175,16 +176,14 @@ class Variable extends Definition {
 }
 
 /// Represents a function definition.
-class FunctionDefinition extends Definition {
+class FunctionDefinition extends Definition with Scope<Variable> {
   Token functionName;
   VariableType returnValue;
-  List<Variable> parameters;
   CompoundStatement body;
 
-  FunctionDefinition(
-      {@required Token functionName,
-      @required this.returnValue,
-      @required this.parameters})
+  Iterable<Variable> get parameters => definitions.values;
+
+  FunctionDefinition({@required Token functionName, @required this.returnValue})
       : super(functionName.value),
         functionName = functionName;
 
@@ -256,7 +255,7 @@ abstract class Statement extends AstNode {
 /// `while`, and `do-while`, even if their body is __not__ enclosed by brackets,
 /// because (since C99) these statements still introduce a new scope. You can
 /// check for this with the `isSynthetic` property.
-class CompoundStatement extends Statement with Scope {
+class CompoundStatement extends Statement with Scope<Variable> {
   Token openingBracket;
   Token closingBracket;
   List<Statement> statements = [];

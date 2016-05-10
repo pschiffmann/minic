@@ -145,15 +145,17 @@ class Parser {
   /// all [GotoStatement]s have valid targets, and that a [ReturnStatement] is
   /// reached before the end all non-void functions (TODO).
   void parseFunctionDefinition(Token constToken, VariableType returnValue) {
-    var nameToken = scanner.consume([TokenType.identifier]);
-    scanner.consume([TokenType.lbracket]);
+    var function = new FunctionDefinition(
+        functionName: scanner.consume([TokenType.identifier]),
+        returnValue: returnValue);
+    currentScope.define(function);
 
-    var parameters = <Variable>[];
+    scanner.consume([TokenType.lbracket]);
     while (!scanner.checkCurrent([TokenType.rbracket])) {
       var parameterConst = scanner.consumeIfMatches([TokenType.kw_const]);
       var parameterType = parseType();
       var parameterName = scanner.consume([TokenType.identifier]);
-      parameters.add(new Variable(
+      function.define(new Variable(
           constToken: parameterConst,
           variableTypeName: null,
           variableName: parameterName,
@@ -163,13 +165,7 @@ class Parser {
     }
     scanner.consume([TokenType.rbracket]);
 
-    var function = new FunctionDefinition(
-        functionName: nameToken,
-        returnValue: returnValue,
-        parameters: parameters);
-    currentScope.define(function);
-    parseCompoundStatement((stmt) => function..body = stmt,
-        variables: parameters);
+    parseCompoundStatement((stmt) => function..body = stmt);
 
     var gotoTargets = function.body.labeledStatements;
     for (var node in function.recursiveChildren) {
@@ -220,22 +216,15 @@ class Parser {
   }
 
   /// Parse a [CompoundStatement]. Sets the newly created object as
-  /// `currentScope`.
-  ///
-  /// If `variables` are passed, they are added to this scope. This is useful
-  /// for function arguments.
+  /// `currentScope` during the recursive calls to `parseStatement`.
   void parseCompoundStatement(linkToParent link,
-      {Iterable<Label> labels: const <Label>[],
-      Iterable<Definition> variables: const []}) {
+      {Iterable<Label> labels: const <Label>[]}) {
     var openingBracket = scanner.consume([TokenType.lcbracket]);
     var parentScope = currentScope;
     var compoundStatement = currentScope =
         new CompoundStatement(openingBracket: openingBracket, labels: labels);
 
     compoundStatement.parent = link(compoundStatement);
-    for (var variable in variables) {
-      compoundStatement.define(variable);
-    }
 
     while (!scanner.checkCurrent([TokenType.rcbracket])) {
       parseStatement((stmt) => compoundStatement..statements.add(stmt));

@@ -11,7 +11,6 @@ int calculateRequiredBytes(int n) => (log(n) / log(256)).ceil();
 /// Other number encodings are not supported by [ByteData], so we don't support
 /// them either.
 class NumberType {
-
   static const String unsigned = 'u';
   static const String signed = 's';
 
