@@ -593,7 +593,8 @@ class Scanner extends PeekIterator<Token> {
             yield new Token(tokenType, value, source.span(offset, match.end));
             offset = match.end;
           }
-          yield new Token(TokenType.endOfFile, null, null);
+          yield new Token(
+              TokenType.endOfFile, '', source.span(source.length - 1));
         }());
 
   /// Return `current` and forward the Scanner by one token.
