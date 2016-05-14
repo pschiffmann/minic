@@ -1,10 +1,41 @@
+/// This library implements the target architecture of the minic compiler,
+/// consisting of the [instruction set architecture][1] and a [virtual machine]
+/// [2] that implements these instructions.
 ///
+/// The [VM] provides a 16-bit address space; code segment and runtime data
+/// share 2^16B ≈ 65kB. All opcodes have a size of 4 bytes, where the two lower
+/// bytes are reserved for one immediate argument. Because the VM has no
+/// general-purpose registers, the instruction set is implemented as a stack
+/// machine.
+///
+/// [1]: https://en.wikipedia.org/wiki/Instruction_set
+/// [2]: https://en.wikipedia.org/wiki/Virtual_machine
 library minic.src.cmachine;
 
+import 'dart:math' show pow;
 import '../ast.dart' show AstNode;
 import '../memory.dart';
 import '../scanner.dart' show Token;
 
+/// This library works with a static size of 4 bytes for all opcodes.
+const NumberType instructionSize = NumberType.uint32;
+
+/// If an immediate argument is encoded in an opcode, its size is 2 bytes.
+const NumberType addressSize = NumberType.uint16;
+
+/// This class serves as the context to a program execution by providing the
+/// memory to store runtime data. This includes the organizational registers and
+/// random access memory.
+///
+/// The following diagram describes the structure of the memory block:
+///
+///          stack          -- address: stackPointer..max
+///            ⋮
+///     <unused segment>
+///            ⋮
+///          heap           -- address: codeSegmentSize..<property not implemented>
+///            ⋮
+///          code           -- address: 0..codeSegmentSize - 1
 class VM {
   /// Combined stack and heap in a continuous block of memory.
   ///
@@ -12,26 +43,64 @@ class VM {
   /// the heap begins at zero and grows towards infinity.
   MemoryBlock memory;
 
+  /// The program that is executed when calling [run].
+  List<Instruction> program;
+
+  /// Number of bytes in the VMs memory that is reserved for the [program].
+  int get codeSegmentSize => program.length * instructionSize.size;
+
   /// Points to the lowest currently used byte of the stack (in [memory]).
   int stackPointer;
 
-  ///
+  /// Points to the last byte in the stack that is not owned by the current
+  /// function invocation. This register is used to determine the memory address
+  /// of local variables. Look at [LoadRelativeAddressInstruction] for details.
   int framePointer;
 
   /// Points to the highest stack index the current function might allocate.
+  ///
+  /// TODO: Will be used to detect stack overflows, once heap memory allocation
+  /// is implemented.
   int extremePointer;
 
   /// Stores the index into the program code of the next instruction.
+  ///
+  /// Note: this index references the _nth instruction_, not the instruction
+  /// at _address n_! The address of the referenced instruction in bytes is
+  /// `programCounter * instructionSize.size`.
   int programCounter = 0;
 
-  VM(int memorySize)
-      : memory = new MemoryBlock(memorySize),
-        stackPointer = memorySize;
+  /// The instruction that should be executed next, according to the flow
+  /// control of the program.
+  Instruction get nextInstruction => program[programCounter];
 
-  /// Execute [instruction] in the context of this VM.
+  /// Initialize the VM with `memorySize` bytes available memory, of which the
+  /// bytes `[0..codeSegmentSize)` are read-only.
+  VM(this.program, [int memorySize]) {
+    memorySize ??= pow(2, 16);
+    if (memorySize > pow(2, 16))
+      throw new ArgumentError.value(
+          memorySize, 'memorySize', 'Exceeding maximum valid value of 2^16');
+    memory = new MemoryBlock(memorySize - codeSegmentSize);
+    stackPointer = framePointer = extremePointer = memorySize;
+  }
+
+  /// Run [program] until it terminates. Return the value returned from the
+  /// programs `main` function.
+  int run() {
+    try {
+      while (true) {
+        execute(nextInstruction);
+      }
+    } on HaltSignal catch (signal) {
+      return signal.statusCode;
+    }
+  }
+
+  /// Execute a single `instruction` in the context of this VM.
   void execute(Instruction instruction) {
     programCounter++;
-    instruction.execute(this);
+    instruction.implementation.execute(this, instruction.argument);
   }
 
   /// Take back the last executed instruction.
@@ -44,7 +113,15 @@ class VM {
 
   /// Read [memory] at address as the specified number type.
   num readMemoryValue(int address, NumberType numberType) {
-    return memory.getValue(address, numberType);
+    if (address < codeSegmentSize)
+      // TODO: Encode the instruction(s) at `address`, and return the according
+      // byte value.
+      throw new UnimplementedError('Reading from code segment not implemented');
+    try {
+      return memory.getValue(address - codeSegmentSize, numberType);
+    } on RangeError {
+      throw new SegfaultSignal(address, 'Out of range');
+    }
   }
 
   /// Read [memory] at the current stack pointer as the specified number type,
@@ -58,7 +135,13 @@ class VM {
   /// Insert value into [memory] at the specified address, encoded as the
   /// specified number type.
   void setMemoryValue(int address, NumberType numberType, num value) {
-    memory.setValue(address, numberType, value);
+    if (address < codeSegmentSize)
+      throw new SegfaultSignal(address, 'The code segment is read-only');
+    try {
+      memory.setValue(address, numberType, value);
+    } on RangeError {
+      throw new SegfaultSignal(address, 'Out of range');
+    }
   }
 
   /// Encode value as the specified number type, increase the stack pointer by
@@ -71,7 +154,7 @@ class VM {
 }
 
 /// Contains a single instruction that was generated for a portion of the AST.
-/// It can be executed on a [VM].
+/// It can be executed by a [VM].
 class Instruction {
   /// These tokens are taken from the AST nodes that produced this instruction.
   /// For example, for an [AddInstruction], `tokens` will reference a `+` token.
@@ -82,7 +165,7 @@ class Instruction {
   ///   * `null` if the implementation takes no argument
   ///   * `int` if the value can be directly resolved
   ///   * An [AstNode] if the value can't be determined at the time when this
-  ///     object is created. This happens when a control flow instruction jumps
+  ///     object is created. This happens when a flow control instruction jumps
   ///     "forward", targeting an instruction with a higher address that itself.
   var immediateValue;
 
@@ -97,9 +180,6 @@ class Instruction {
       : immediateValue;
 
   Instruction(this.implementation, this.tokens, [this.immediateValue]);
-
-  /// Execute this instruction on the memory of `vm`.
-  void execute(VM vm) => implementation.execute(vm, argument);
 
   String toString() => immediateValue != null
       ? '${implementation.name} $argument'
@@ -511,4 +591,19 @@ class HaltSignal implements Exception {
   HaltSignal(this.statusCode);
 
   String toString() => 'HaltSignal($statusCode)';
+}
+
+/// Thrown by [VM] to handle [memory access violations][1].
+///
+/// [1]: https://en.wikipedia.org/wiki/Segmentation_fault
+class SegfaultSignal implements Exception {
+  /// The address that was accessed.
+  int address;
+
+  /// Explanation why the signal was thrown.
+  String message;
+
+  SegfaultSignal(this.address, this.message);
+
+  String toString() => 'Segfault at $address: $message';
 }
