@@ -47,7 +47,7 @@ class VM {
   List<Instruction> program;
 
   /// Number of bytes in the VMs memory that is reserved for the [program].
-  int get codeSegmentSize => program.length * instructionSize.size;
+  int get codeSegmentSize => program.length * instructionSize.sizeInBytes;
 
   /// Points to the lowest currently used byte of the stack (in [memory]).
   int stackPointer;
@@ -128,7 +128,7 @@ class VM {
   /// then decrease the stack pointer by the size of that value.
   num popStack(NumberType numberType) {
     var value = readMemoryValue(stackPointer, numberType);
-    stackPointer += numberType.size;
+    stackPointer += numberType.sizeInBytes;
     return value;
   }
 
@@ -148,7 +148,7 @@ class VM {
   /// the size of that value, then place the encoded value into [memory] at that
   /// address.
   void pushStack(NumberType numberType, num value) {
-    stackPointer -= numberType.size;
+    stackPointer -= numberType.sizeInBytes;
     setMemoryValue(stackPointer, numberType, value);
   }
 }
@@ -210,7 +210,7 @@ class PushInstruction extends InstructionTemplate {
     vm.pushStack(valueType, value);
   }
 
-  String format(int value) => 'loadc<${valueType.size}> $value';
+  String format(int value) => 'loadc<${valueType.sizeInBytes}> $value';
 }
 
 /// Reduces the stack by _n_ bytes, encoded as immediate argument.
@@ -352,7 +352,7 @@ class CallInstruction extends InstructionTemplate {
     vm.framePointer = vm.stackPointer;
   }
 
-  String format(int value) => 'call ${value * instructionSize.size}';
+  String format(int value) => 'call ${value * instructionSize.sizeInBytes}';
 }
 
 /// Completes the runtime context of a function invocation by setting the
@@ -373,7 +373,7 @@ class ReturnInstruction extends InstructionTemplate {
   const ReturnInstruction();
 
   void execute(VM vm, _) {
-    var localOffset = (int n) => vm.framePointer + n * addressSize.size;
+    var localOffset = (int n) => vm.framePointer + n * addressSize.sizeInBytes;
     vm
       ..programCounter = vm.readMemoryValue(localOffset(0), addressSize)
       ..stackPointer = vm.readMemoryValue(localOffset(1), addressSize)
@@ -521,7 +521,7 @@ class BitwiseExclusiveOrInstruction extends ArithmeticOperationInstruction {
 
 /// Compares the two top stack elements using `==`.
 class EqualsInstruction extends ArithmeticOperationInstruction {
-  String get name => 'eq<${numberType.size * 8}>';
+  String get name => 'eq<${numberType.sizeInBits}>';
 
   const EqualsInstruction(numberType) : super(numberType);
 

@@ -15,7 +15,11 @@ class NumberType {
   static const String signed = 's';
 
   /// Number of bytes required to store a value of this type.
-  final int size;
+  final int sizeInBytes;
+
+  int get sizeInBits => sizeInBytes * 8;
+
+  int get bitmask => pow(2, sizeInBits) - 1;
 
   /// Always [int] or [double].
   final Type memoryInterpretation;
@@ -24,7 +28,7 @@ class NumberType {
   /// for double types.
   final String sign;
 
-  const NumberType(this.size, this.memoryInterpretation, this.sign);
+  const NumberType(this.sizeInBytes, this.memoryInterpretation, this.sign);
 
   static const NumberType uint8 = const NumberType(1, int, unsigned);
   static const NumberType uint16 = const NumberType(2, int, unsigned);
@@ -50,7 +54,7 @@ class NumberType {
     fp64
   ];
 
-  String toString() => '${sign ?? ''}$memoryInterpretation${8 * size}';
+  String toString() => '${sign ?? ''}$memoryInterpretation${sizeInBits}';
 }
 
 /// Wrapper class around [ByteData]. Its only purpose is to map a [NumberType]

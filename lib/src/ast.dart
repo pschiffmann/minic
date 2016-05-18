@@ -128,7 +128,7 @@ class BasicType extends VariableType {
   NumberType numberType;
 
   BasicType(String identifier, NumberType numberType)
-      : super(identifier, numberType.size),
+      : super(identifier, numberType.sizeInBytes),
         numberType = numberType;
 
   bool canBeConvertedTo(VariableType other) {
