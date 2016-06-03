@@ -3,13 +3,15 @@
 /// [2] that implements these instructions.
 ///
 /// The [VM] provides a 16-bit address space; code segment and runtime data
-/// share 2^16B ≈ 65kB. All opcodes have a size of 4 bytes, where the two lower
-/// bytes are reserved for one immediate argument. Because the VM has no
+/// share 2^16B ≈ 65kB. The instruction set design is heavily inspired by the
+/// [Java bytecode instructions][3]: All opcodes have a size of 1 byte, and the
+/// following 0..8 bytes store one immediate argument. Because the VM has no
 /// general-purpose registers, the instruction set is implemented as a stack
 /// machine.
 ///
 /// [1]: https://en.wikipedia.org/wiki/Instruction_set
 /// [2]: https://en.wikipedia.org/wiki/Virtual_machine
+/// [3]: https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 library minic.src.cmachine;
 
 import 'dart:math' show pow;
@@ -17,10 +19,11 @@ import '../ast.dart' show AstNode;
 import '../memory.dart';
 import '../scanner.dart' show Token;
 
-/// This library works with a static size of 4 bytes for all opcodes.
-const NumberType instructionSize = NumberType.uint32;
+/// All opcodes have a size of one byte.
+const NumberType opcodeSize = NumberType.uint8;
 
-/// If an immediate argument is encoded in an opcode, its size is 2 bytes.
+/// The memory of a VM is limited to 2^16 bytes; therefore, a 16-bit integer is
+/// sufficient to allow byte-level addressing.
 const NumberType addressSize = NumberType.uint16;
 
 /// This class serves as the context to a program execution by providing the
@@ -47,7 +50,7 @@ class VM {
   List<Instruction> program;
 
   /// Number of bytes in the VMs memory that is reserved for the [program].
-  int get codeSegmentSize => program.length * instructionSize.sizeInBytes;
+  int get codeSegmentSize => throw new UnimplementedError();
 
   /// Points to the lowest currently used byte of the stack (in [memory]).
   int stackPointer;
@@ -352,7 +355,7 @@ class CallInstruction extends InstructionTemplate {
     vm.framePointer = vm.stackPointer;
   }
 
-  String format(int value) => 'call ${value * instructionSize.sizeInBytes}';
+  String format(int value) => 'call $value';
 }
 
 /// Completes the runtime context of a function invocation by setting the
