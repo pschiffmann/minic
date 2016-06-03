@@ -50,7 +50,8 @@ class VM {
   List<Instruction> program;
 
   /// Number of bytes in the VMs memory that is reserved for the [program].
-  int get codeSegmentSize => throw new UnimplementedError();
+  int get codeSegmentSize =>
+      0; // TODO: update this when a better structure for [program] is implemented.
 
   /// Points to the lowest currently used byte of the stack (in [memory]).
   int stackPointer;
@@ -174,7 +175,7 @@ class Instruction {
 
   /// References the instruction type, or [opcode]
   /// (https://en.wikipedia.org/wiki/Opcode).
-  InstructionTemplate implementation;
+  InstructionImplementation implementation;
 
   /// If `implementation` does not expect an argument, return `null`. Else
   /// resolve `immediateValue` to an integer value.
@@ -184,63 +185,98 @@ class Instruction {
 
   Instruction(this.implementation, this.tokens, [this.immediateValue]);
 
-  String toString() => implementation.format(argument);
+  String toString() => implementation.immediateArgumentSize == 0
+      ? implementation.name
+      : '${implementation.name} $argument';
 }
 
 /// Implements a machine instruction that can be executed by a [VM].
 ///
-/// Instructions are instantiated as const objects because we need several
-/// different versions of some instructions. For example, we need integer
-/// addition for 8, 16, 32 and 64 bit words.
-abstract class InstructionTemplate {
-  const InstructionTemplate();
+/// Instructions are instantiated as objects because we need several different
+/// versions of some of them. For example, we need integer addition for 8, 16,
+/// 32 and 64 bit words.
+abstract class InstructionImplementation {
+  /// A verbose mnemonic for this instruction.
+  String get name;
+
+  /// This number of bytes immediately following this instruction are passed to
+  /// [execute] as `immediateArgument`.
+  int get immediateArgumentSize => 0;
+
+  const InstructionImplementation();
 
   /// Execute this instruction on `vm`.
   void execute(VM vm, num immediateArgument);
-
-  /// Return a human-readable name for this instruction type.
-  String format(int immediateArgument);
 }
 
-/// Pushes the immediate argument on the stack.
-class PushInstruction extends InstructionTemplate {
+/// Superclass for implementations that are overloaded with a single type. This
+/// includes all overloaded implementations except [TypeConversionInstruction].
+abstract class OverloadedImplementation extends InstructionImplementation {
+  /// Some implementations (for example [AddInstruction]) don't distinct between
+  /// signed and unsigned integers. This method generates a string similar to
+  /// [NumberType#toString], but leaves out the sign prefix for integers.
+  static String _unifyIntegerNames(NumberType t) => t.memoryInterpretation ==
+      NumberType.float ? t.toString() : 'int${t.sizeInBits}';
+
   /// Size of the value that is pushed to the stack.
   final NumberType valueType;
 
-  const PushInstruction(this.valueType);
+  String get name => format(valueType);
+
+  const OverloadedImplementation(this.valueType);
+
+  /// Return a mnemonic for the given overloaded type. This is used by
+  /// [InstructionSet#resolveForType].
+  ///
+  /// _This method should be static, but static methods are not part and a class
+  /// interface and difficult to call dynamically._
+  String format(NumberType t);
+}
+
+/// Pushes the immediate argument on the stack.
+class PushInstruction extends OverloadedImplementation {
+  int get immediateArgumentSize => valueType.sizeInBytes;
+
+  const PushInstruction(NumberType valueType) : super(valueType);
 
   void execute(VM vm, num value) {
     vm.pushStack(valueType, value);
   }
 
-  String format(int value) => 'loadc<${valueType.sizeInBytes}> $value';
+  String format(NumberType t) => 'loadc<${t.sizeInBits}>';
 }
 
 /// Reduces the stack by _n_ bytes, encoded as immediate argument.
-class PopInstruction extends InstructionTemplate {
+class PopInstruction extends InstructionImplementation {
+  String get name => 'pop';
+
   const PopInstruction();
 
   void execute(VM vm, int numberOfBytes) {
     vm.stackPointer += numberOfBytes;
   }
-
-  String format(int value) => 'pop $value';
 }
 
 /// Increases the stack by _n_ bytes, encoded as immediate argument.
-class StackAllocateInstruction extends InstructionTemplate {
+class StackAllocateInstruction extends InstructionImplementation {
+  String get name => 'alloc';
+
+  int get immediateArgumentSize => addressSize.sizeInBytes;
+
   const StackAllocateInstruction();
 
   void execute(VM vm, int numberOfBytes) {
     vm.stackPointer -= numberOfBytes;
   }
-
-  String format(int value) => 'alloc $value';
 }
 
 /// Loads _n_ bytes from _address_ to the stack, where _n_ is encoded as
 /// immediate argument in the instruction, and _address_ is read from the stack.
-class FetchInstruction extends InstructionTemplate {
+class FetchInstruction extends InstructionImplementation {
+  String get name => 'loada';
+
+  int get immediateArgumentSize => addressSize.sizeInBytes;
+
   const FetchInstruction();
 
   void execute(VM vm, num numberOfBytes) {
@@ -257,13 +293,15 @@ class FetchInstruction extends InstructionTemplate {
       address += chunk.size;
     }
   }
-
-  String format(int value) => 'loada $value';
 }
 
 /// Stores _n_ bytes at _address_ on the stack, where _n_ is encoded as
 /// immediate argument in the instruction, and _address_ is read from the stack.
-class StoreInstruction extends InstructionTemplate {
+class StoreInstruction extends InstructionImplementation {
+  String get name => 'store';
+
+  int get immediateArgumentSize => addressSize.sizeInBytes;
+
   const StoreInstruction();
 
   void execute(VM vm, num numberOfBytes) {
@@ -280,53 +318,57 @@ class StoreInstruction extends InstructionTemplate {
       address += chunk.size;
     }
   }
-
-  String format(int value) => 'store $value';
 }
 
 /// Load the value `vm.framePointer` - _immediate value_ to the stack.
-class LoadRelativeAddressInstruction extends InstructionTemplate {
+class LoadRelativeAddressInstruction extends InstructionImplementation {
+  String get name => 'loadr';
+
+  int get immediateArgumentSize => addressSize.sizeInBytes;
+
   const LoadRelativeAddressInstruction();
 
   void execute(VM vm, int offset) {
     vm.pushStack(addressSize, vm.framePointer - offset);
   }
-
-  String format(int value) => 'loadr $value';
 }
 
 /// Halts the program execution by throwing [HaltSignal]. Reads the exit code
 /// from the stack as `uint32`.
-class HaltInstruction extends InstructionTemplate {
+class HaltInstruction extends InstructionImplementation {
+  String get name => 'halt';
+
   const HaltInstruction();
 
   void execute(VM vm, _) =>
       throw new HaltSignal(vm.popStack(NumberType.uint32));
-
-  String format(int _) => 'halt';
 }
 
 /// Sets the program counter to the immediate value.
-class JumpInstruction extends InstructionTemplate {
+class JumpInstruction extends InstructionImplementation {
+  String get name => 'jump';
+
+  int get immediateArgumentSize => addressSize.sizeInBytes;
+
   const JumpInstruction();
 
   void execute(VM vm, int address) {
     vm.programCounter = address;
   }
-
-  String format(int _) => 'jump';
 }
 
 /// Pops the top byte from the stack; if it equals zero, jump to the immediate
 /// address.
-class JumpZeroInstruction extends InstructionTemplate {
+class JumpZeroInstruction extends InstructionImplementation {
+  String get name => 'jumpz';
+
+  int get immediateArgumentSize => addressSize.sizeInBytes;
+
   const JumpZeroInstruction();
 
   void execute(VM vm, int address) {
     if (vm.popStack(NumberType.uint8) == 0) vm.programCounter = address;
   }
-
-  String format(int _) => 'jumpz';
 }
 
 /// Calls the function referenced by the top stack value by setting the program
@@ -343,7 +385,11 @@ class JumpZeroInstruction extends InstructionTemplate {
 ///
 /// Points the frame pointer to the top of the stack (and therefore on the
 /// return address).
-class CallInstruction extends InstructionTemplate {
+class CallInstruction extends InstructionImplementation {
+  String get name => 'call';
+
+  int get immediateArgumentSize => addressSize.sizeInBytes;
+
   const CallInstruction();
 
   void execute(VM vm, int offset) {
@@ -354,25 +400,27 @@ class CallInstruction extends InstructionTemplate {
     vm.pushStack(addressSize, vm.programCounter);
     vm.framePointer = vm.stackPointer;
   }
-
-  String format(int value) => 'call $value';
 }
 
 /// Completes the runtime context of a function invocation by setting the
 /// extreme pointer.
-class EnterFunctionInstruction extends InstructionTemplate {
+class EnterFunctionInstruction extends InstructionImplementation {
+  String get name => 'enter';
+
+  int get immediateArgumentSize => addressSize.sizeInBytes;
+
   const EnterFunctionInstruction();
 
   void execute(VM vm, int offset) {
     vm.extremePointer = vm.framePointer - offset;
   }
-
-  String format(int value) => 'enter $value';
 }
 
 /// Returns from a function call. Restores the organizational registers from the
 /// backed up values on the stack.
-class ReturnInstruction extends InstructionTemplate {
+class ReturnInstruction extends InstructionImplementation {
+  String get name => 'return';
+
   const ReturnInstruction();
 
   void execute(VM vm, _) {
@@ -383,198 +431,194 @@ class ReturnInstruction extends InstructionTemplate {
       ..extremePointer = vm.readMemoryValue(localOffset(3), addressSize)
       ..framePointer = vm.readMemoryValue(localOffset(2), addressSize);
   }
-
-  String format(int _) => 'return';
 }
 
 /// Converts the top stack element between the specified types. Instead of
 /// reinterpreting the memory, the value is retained. For example, executing a
-/// type conversion `double32 ↦ int32` on the value `1.0` yields `1` (which has
+/// type conversion `double32↦int32` on the value `1.0` yields `1` (which has
 /// a different bit pattern).
-class TypeConversionInstruction extends InstructionTemplate {
+class TypeConversionInstruction extends InstructionImplementation {
   final NumberType from;
   final NumberType to;
+
+  String get name => format(from, to);
 
   const TypeConversionInstruction(this.from, this.to);
 
   void execute(VM vm, _) => vm.pushStack(to, vm.popStack(from));
 
-  String format(int _) => 'cast<$from↦$to>';
+  String format(NumberType from, NumberType to) => 'cast<$from↦$to>';
 }
 
 /// Superclass for all side effect-free arithmetic, bitwise and logical
 /// operators with two operands. Subclasses need only implement the `calculate`
 /// method.
-abstract class ArithmeticOperationInstruction extends InstructionTemplate {
-  final NumberType numberType;
-
-  String get name;
-
-  const ArithmeticOperationInstruction(this.numberType);
+abstract class ArithmeticOperationInstruction extends OverloadedImplementation {
+  const ArithmeticOperationInstruction(NumberType numberType)
+      : super(numberType);
 
   /// Pop two `numberType` elements from the stack, pass them to `calculate`
   /// and push the result back onto the stack.
   void execute(VM vm, _) {
-    var arg1 = vm.popStack(numberType);
-    var arg2 = vm.popStack(numberType);
-    vm.pushStack(numberType, calculate(arg1, arg2));
+    var arg1 = vm.popStack(valueType);
+    var arg2 = vm.popStack(valueType);
+    vm.pushStack(valueType, calculate(arg1, arg2));
   }
 
   /// Extension point for subclasses; implements the specific operation.
   num calculate(num op1, num op2);
-
-  String format(int _) => name;
 }
 
 /// Adds the two top stack elements.
 class AddInstruction extends ArithmeticOperationInstruction {
-  String get name => 'add<${numberType}>';
-
   const AddInstruction(numberType) : super(numberType);
 
   num calculate(num a, num b) => a + b;
+
+  String format(NumberType t) =>
+      'add<${OverloadedImplementation._unifyIntegerNames(t)}>';
 }
 
 /// Subtracts the two top stack elements.
 class SubtractInstruction extends ArithmeticOperationInstruction {
-  String get name => 'sub<${numberType}>';
-
   const SubtractInstruction(numberType) : super(numberType);
 
   num calculate(num a, num b) => a - b;
+
+  String format(NumberType t) =>
+      'sub<${OverloadedImplementation._unifyIntegerNames(t)}>';
 }
 
 /// Multiplies the two top stack elements.
 class MultiplyInstruction extends ArithmeticOperationInstruction {
-  String get name => 'mul<${numberType}>';
-
   const MultiplyInstruction(numberType) : super(numberType);
 
   num calculate(num a, num b) => a * b;
+
+  String format(NumberType t) =>
+      'mul<${OverloadedImplementation._unifyIntegerNames(t)}>';
 }
 
 /// Divides the two top stack elements.
 class DivideInstruction extends ArithmeticOperationInstruction {
-  String get name => 'div<${numberType}>';
-
   const DivideInstruction(numberType) : super(numberType);
 
   num calculate(num a, num b) =>
-      numberType.memoryInterpretation == double ? a / b : a ~/ b;
+      valueType.memoryInterpretation == NumberType.float ? a / b : a ~/ b;
+
+  String format(NumberType t) =>
+      'div<${OverloadedImplementation._unifyIntegerNames(t)}>';
 }
 
 /// Calculates the modulo of the two top stack elements.
 class ModuloInstruction extends ArithmeticOperationInstruction {
-  String get name => 'mod<${numberType}>';
-
   const ModuloInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a % b;
+
+  String format(NumberType t) =>
+      'mod<${OverloadedImplementation._unifyIntegerNames(t)}>';
 }
 
 /// Arithmetic inversion of the top stack element.
-class InverseInstruction extends InstructionTemplate {
-  final NumberType numberType;
+class InverseInstruction extends OverloadedImplementation {
+  const InverseInstruction(NumberType valueType) : super(valueType);
 
-  const InverseInstruction(this.numberType);
+  void execute(VM vm, _) => vm.pushStack(valueType, -vm.popStack(valueType));
 
-  void execute(VM vm, _) => vm.pushStack(numberType, -vm.popStack(numberType));
-
-  String format(int _) => 'neg<${numberType}>';
+  String format(NumberType t) => 'neg<$t>';
 }
 
 /// Bitwise inverse of the top stack element.
-class BitwiseNotInstruction extends InstructionTemplate {
-  final NumberType numberType;
-
-  const BitwiseNotInstruction(this.numberType);
+class BitwiseNotInstruction extends OverloadedImplementation {
+  const BitwiseNotInstruction(NumberType valueType) : super(valueType);
 
   void execute(VM vm, _) =>
-      vm.pushStack(numberType, ~(vm.popStack(numberType) as int));
+      vm.pushStack(valueType, ~(vm.popStack(valueType) as int));
 
-  String format(int _) => 'inv<${numberType}>';
+  String format(NumberType t) => 'inv<${t.sizeInBits}>';
 }
 
 /// Bitwise _and_ of the two top stack elements.
 class BitwiseAndInstruction extends ArithmeticOperationInstruction {
-  String get name => 'and<${numberType}>';
-
   const BitwiseAndInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a & b;
+
+  String format(NumberType t) => 'and<${t.sizeInBits}>';
 }
 
 /// Bitwise _or_ of the two top stack elements.
 class BitwiseOrInstruction extends ArithmeticOperationInstruction {
-  String get name => 'or<${numberType}>';
-
   const BitwiseOrInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a | b;
+
+  String format(NumberType t) => 'or<${t.sizeInBits}>';
 }
 
 /// Bitwise _xor_ of the two top stack elements.
 class BitwiseExclusiveOrInstruction extends ArithmeticOperationInstruction {
-  String get name => 'xor<${numberType}>';
-
   const BitwiseExclusiveOrInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a ^ b;
+
+  String format(NumberType t) => 'xor<${t.sizeInBits}>';
 }
 
 /// Compares the two top stack elements using `==`.
 class EqualsInstruction extends ArithmeticOperationInstruction {
-  String get name => 'eq<${numberType.sizeInBits}>';
-
   const EqualsInstruction(numberType) : super(numberType);
 
   int calculate(num a, num b) => a == b ? 1 : 0;
+
+  String format(NumberType t) => 'eq<${t.sizeInBits}>';
 }
 
 /// Compares the two top stack elements using `>`.
 class GreaterThanInstruction extends ArithmeticOperationInstruction {
-  String get name => 'gt<${numberType}>';
-
   const GreaterThanInstruction(numberType) : super(numberType);
 
   int calculate(num a, num b) => a > b ? 1 : 0;
+
+  String format(NumberType t) => 'gt<$t>';
 }
 
 /// Compares the two top stack elements using `≥`.
 class GreaterEqualsInstruction extends ArithmeticOperationInstruction {
-  String get name => 'ge<${numberType}>';
-
   const GreaterEqualsInstruction(numberType) : super(numberType);
 
   int calculate(num a, num b) => a >= b ? 1 : 0;
+
+  String format(NumberType t) => 'ge<$t>';
 }
 
 /// Compares the two top stack elements using `<`.
 class LessThanInstruction extends ArithmeticOperationInstruction {
-  String get name => 'lt<${numberType}>';
-
   const LessThanInstruction(numberType) : super(numberType);
 
   int calculate(num a, num b) => a < b ? 1 : 0;
+
+  String format(NumberType t) => 'lt<$t>';
 }
 
 /// Compares the two top stack elements using `≤`.
 class LessEqualsInstruction extends ArithmeticOperationInstruction {
-  String get name => 'le<${numberType}>';
-
   const LessEqualsInstruction(numberType) : super(numberType);
 
   int calculate(num a, num b) => a <= b ? 1 : 0;
+
+  String format(NumberType t) => 'le<$t>';
 }
 
 /// Logical negation of the top stack element.
-class NegateInstruction extends InstructionTemplate {
+class NegateInstruction extends InstructionImplementation {
+  String get name => 'not';
+
   const NegateInstruction();
 
   void execute(VM vm, _) => vm.pushStack(
       NumberType.uint8, vm.popStack(NumberType.uint8) == 0 ? 1 : 0);
-
-  String format(int _) => 'not';
 }
 
 /// Thrown when the execution of a program reaches the end of the `main`
