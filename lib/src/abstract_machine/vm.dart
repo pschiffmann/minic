@@ -47,7 +47,137 @@ class VM {
         ..forEach((instruction) =>
             instruction.opcode = 1 + instructions.indexOf(instruction)))([
     new PushInstruction(NumberType.uint8),
-    new PushInstruction(NumberType.uint16)
+    new PushInstruction(NumberType.uint16),
+    new PushInstruction(NumberType.uint32),
+    new PushInstruction(NumberType.uint64),
+    new PopInstruction(),
+    new StackAllocateInstruction(),
+    new FetchInstruction(),
+    new StoreInstruction(),
+    new LoadRelativeAddressInstruction(),
+    new HaltInstruction(),
+    new JumpInstruction(),
+    new JumpInstruction(),
+    new JumpZeroInstruction(),
+    new CallInstruction(),
+    new EnterFunctionInstruction(),
+    new ReturnInstruction(),
+    new TypeConversionInstruction(NumberType.uint8, NumberType.uint16),
+    new TypeConversionInstruction(NumberType.uint16, NumberType.uint32),
+    new TypeConversionInstruction(NumberType.uint32, NumberType.uint64),
+    new TypeConversionInstruction(NumberType.sint8, NumberType.sint16),
+    new TypeConversionInstruction(NumberType.sint16, NumberType.sint32),
+    new TypeConversionInstruction(NumberType.sint32, NumberType.sint64),
+    new TypeConversionInstruction(NumberType.uint16, NumberType.uint8),
+    new TypeConversionInstruction(NumberType.uint32, NumberType.uint16),
+    new TypeConversionInstruction(NumberType.uint64, NumberType.uint32),
+    new TypeConversionInstruction(NumberType.uint32, NumberType.fp32),
+    new TypeConversionInstruction(NumberType.sint32, NumberType.fp32),
+    new TypeConversionInstruction(NumberType.fp32, NumberType.uint32),
+    new TypeConversionInstruction(NumberType.fp32, NumberType.sint32),
+    new TypeConversionInstruction(NumberType.uint64, NumberType.fp64),
+    new TypeConversionInstruction(NumberType.sint64, NumberType.fp64),
+    new TypeConversionInstruction(NumberType.fp64, NumberType.uint64),
+    new TypeConversionInstruction(NumberType.fp64, NumberType.sint64),
+    new TypeConversionInstruction(NumberType.fp32, NumberType.fp64),
+    new TypeConversionInstruction(NumberType.fp64, NumberType.fp32),
+    new AddInstruction(NumberType.uint8),
+    new AddInstruction(NumberType.uint16),
+    new AddInstruction(NumberType.uint32),
+    new AddInstruction(NumberType.uint64),
+    new AddInstruction(NumberType.fp32),
+    new AddInstruction(NumberType.fp64),
+    new SubtractInstruction(NumberType.uint8),
+    new SubtractInstruction(NumberType.uint16),
+    new SubtractInstruction(NumberType.uint32),
+    new SubtractInstruction(NumberType.uint64),
+    new SubtractInstruction(NumberType.fp32),
+    new SubtractInstruction(NumberType.fp64),
+    new MultiplyInstruction(NumberType.uint8),
+    new MultiplyInstruction(NumberType.uint16),
+    new MultiplyInstruction(NumberType.uint32),
+    new MultiplyInstruction(NumberType.uint64),
+    new MultiplyInstruction(NumberType.fp32),
+    new MultiplyInstruction(NumberType.fp64),
+    new DivideInstruction(NumberType.uint8),
+    new DivideInstruction(NumberType.uint16),
+    new DivideInstruction(NumberType.uint32),
+    new DivideInstruction(NumberType.uint64),
+    new DivideInstruction(NumberType.fp32),
+    new DivideInstruction(NumberType.fp64),
+    new ModuloInstruction(NumberType.uint8),
+    new ModuloInstruction(NumberType.uint16),
+    new ModuloInstruction(NumberType.uint32),
+    new ModuloInstruction(NumberType.uint64),
+    new ModuloInstruction(NumberType.fp32),
+    new ModuloInstruction(NumberType.fp64),
+    new InverseInstruction(NumberType.sint8),
+    new InverseInstruction(NumberType.sint16),
+    new InverseInstruction(NumberType.sint32),
+    new InverseInstruction(NumberType.sint64),
+    new InverseInstruction(NumberType.fp32),
+    new InverseInstruction(NumberType.fp64),
+    new BitwiseNotInstruction(NumberType.uint8),
+    new BitwiseNotInstruction(NumberType.uint16),
+    new BitwiseNotInstruction(NumberType.uint32),
+    new BitwiseNotInstruction(NumberType.uint64),
+    new BitwiseAndInstruction(NumberType.uint8),
+    new BitwiseAndInstruction(NumberType.uint16),
+    new BitwiseAndInstruction(NumberType.uint32),
+    new BitwiseAndInstruction(NumberType.uint64),
+    new BitwiseOrInstruction(NumberType.uint8),
+    new BitwiseOrInstruction(NumberType.uint16),
+    new BitwiseOrInstruction(NumberType.uint32),
+    new BitwiseOrInstruction(NumberType.uint64),
+    new BitwiseExclusiveOrInstruction(NumberType.uint8),
+    new BitwiseExclusiveOrInstruction(NumberType.uint16),
+    new BitwiseExclusiveOrInstruction(NumberType.uint32),
+    new BitwiseExclusiveOrInstruction(NumberType.uint64),
+    new EqualsInstruction(NumberType.uint8),
+    new EqualsInstruction(NumberType.uint16),
+    new EqualsInstruction(NumberType.uint32),
+    new EqualsInstruction(NumberType.uint64),
+    new GreaterThanInstruction(NumberType.uint8),
+    new GreaterThanInstruction(NumberType.uint16),
+    new GreaterThanInstruction(NumberType.uint32),
+    new GreaterThanInstruction(NumberType.uint64),
+    new GreaterThanInstruction(NumberType.sint8),
+    new GreaterThanInstruction(NumberType.sint16),
+    new GreaterThanInstruction(NumberType.sint32),
+    new GreaterThanInstruction(NumberType.sint64),
+    new GreaterThanInstruction(NumberType.fp32),
+    new GreaterThanInstruction(NumberType.fp64),
+    new GreaterEqualsInstruction(NumberType.uint8),
+    new GreaterEqualsInstruction(NumberType.uint16),
+    new GreaterEqualsInstruction(NumberType.uint32),
+    new GreaterEqualsInstruction(NumberType.uint64),
+    new GreaterEqualsInstruction(NumberType.sint8),
+    new GreaterEqualsInstruction(NumberType.sint16),
+    new GreaterEqualsInstruction(NumberType.sint32),
+    new GreaterEqualsInstruction(NumberType.sint64),
+    new GreaterEqualsInstruction(NumberType.fp32),
+    new GreaterEqualsInstruction(NumberType.fp64),
+    new LessThanInstruction(NumberType.uint8),
+    new LessThanInstruction(NumberType.uint16),
+    new LessThanInstruction(NumberType.uint32),
+    new LessThanInstruction(NumberType.uint64),
+    new LessThanInstruction(NumberType.sint8),
+    new LessThanInstruction(NumberType.sint16),
+    new LessThanInstruction(NumberType.sint32),
+    new LessThanInstruction(NumberType.sint64),
+    new LessThanInstruction(NumberType.fp32),
+    new LessThanInstruction(NumberType.fp64),
+    new LessEqualsInstruction(NumberType.uint8),
+    new LessEqualsInstruction(NumberType.uint16),
+    new LessEqualsInstruction(NumberType.uint32),
+    new LessEqualsInstruction(NumberType.uint64),
+    new LessEqualsInstruction(NumberType.sint8),
+    new LessEqualsInstruction(NumberType.sint16),
+    new LessEqualsInstruction(NumberType.sint32),
+    new LessEqualsInstruction(NumberType.sint64),
+    new LessEqualsInstruction(NumberType.fp32),
+    new LessEqualsInstruction(NumberType.fp64),
+    new NegateInstruction()
   ]);
 
   /// The program that is executed when calling [run].
@@ -166,7 +296,8 @@ class VM {
 /// methods for it. Instead, [AddInstruction] is instantiated for each number
 /// type.
 abstract class Instruction {
-  /// A verbose mnemonic for this instruction.
+  /// A verbose mnemonic for this instruction. If two instructions have the same
+  /// name, they yield the same result if executed on a VM.
   String get name;
 
   /// This number of bytes immediately following this instruction are passed to
@@ -402,8 +533,43 @@ class ReturnInstruction extends Instruction {
 
 /// Converts the top stack element between the specified types. Instead of
 /// reinterpreting the memory, the value is retained. For example, executing a
-/// type conversion `double32↦int32` on the value `1.0` yields `1` (which has
+/// type conversion `double32↦uint32` on the value `1.0` yields `1` (which has
 /// a different bit pattern).
+///
+/// The VM instruction set only supports the following subset of all to/from
+/// conversion pairs:
+///
+/// integer width expansion – only conversion between adjacent sizes.
+///
+///     uint8↦uint16
+///     uint16↦uint32
+///     uint32↦uint64
+///     sint8↦sint16
+///     sint16↦sint32
+///     sint32↦sint64
+///
+/// integer width reduction – these simply crop the most significant bytes,
+/// which yields identical behaviour for signed and unsigned values.
+///
+///     uint16↦uint8
+///     uint32↦uint16
+///     uint64↦uint32
+///
+/// int / float conversion – only between same-size types.
+///
+///     uint32↦float
+///     sint32↦float
+///     float↦uint32
+///     float↦sint32
+///     uint64↦double
+///     sint64↦double
+///     double↦uint64
+///     double↦sint64
+///
+/// float width
+///
+///     float↦double
+///     double↦float
 class TypeConversionInstruction extends Instruction {
   final NumberType from;
   final NumberType to;
