@@ -111,12 +111,12 @@ class VM {
     new ModuloInstruction(NumberType.uint64),
     new ModuloInstruction(NumberType.fp32),
     new ModuloInstruction(NumberType.fp64),
-    new InverseInstruction(NumberType.sint8),
-    new InverseInstruction(NumberType.sint16),
-    new InverseInstruction(NumberType.sint32),
-    new InverseInstruction(NumberType.sint64),
-    new InverseInstruction(NumberType.fp32),
-    new InverseInstruction(NumberType.fp64),
+    new ArithmeticNegateInstruction(NumberType.sint8),
+    new ArithmeticNegateInstruction(NumberType.sint16),
+    new ArithmeticNegateInstruction(NumberType.sint32),
+    new ArithmeticNegateInstruction(NumberType.sint64),
+    new ArithmeticNegateInstruction(NumberType.fp32),
+    new ArithmeticNegateInstruction(NumberType.fp64),
     new BitwiseNotInstruction(NumberType.uint8),
     new BitwiseNotInstruction(NumberType.uint16),
     new BitwiseNotInstruction(NumberType.uint32),
@@ -177,7 +177,7 @@ class VM {
     new LessEqualsInstruction(NumberType.sint64),
     new LessEqualsInstruction(NumberType.fp32),
     new LessEqualsInstruction(NumberType.fp64),
-    new NegateInstruction()
+    new ToggleBooleanInstruction()
   ]);
 
   /// The program that is executed when calling [run].
@@ -649,10 +649,10 @@ class ModuloInstruction extends ArithmeticOperationInstruction {
 }
 
 /// Arithmetic inversion of the top stack element.
-class InverseInstruction extends OverloadedInstruction {
+class ArithmeticNegateInstruction extends OverloadedInstruction {
   String get name => 'neg<$valueType>';
 
-  InverseInstruction(NumberType valueType) : super(valueType);
+  ArithmeticNegateInstruction(NumberType valueType) : super(valueType);
 
   void execute(VM vm, _) => vm.pushStack(valueType, -vm.popStack(valueType));
 }
@@ -740,10 +740,10 @@ class LessEqualsInstruction extends ArithmeticOperationInstruction {
 }
 
 /// Logical negation of the top stack element.
-class NegateInstruction extends Instruction {
+class ToggleBooleanInstruction extends Instruction {
   String get name => 'not';
 
-  NegateInstruction();
+  ToggleBooleanInstruction();
 
   void execute(VM vm, _) => vm.pushStack(
       NumberType.uint8, vm.popStack(NumberType.uint8) == 0 ? 1 : 0);
