@@ -1,4 +1,4 @@
-library minic.abstract_machine.instruction_set;
+library minic.abstract_machine.code_generator;
 
 import 'vm.dart';
 
