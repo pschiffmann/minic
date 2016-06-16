@@ -1,4 +1,4 @@
-library minic.src.memory;
+library minic.memory;
 
 import 'dart:math';
 import 'dart:typed_data' show ByteData;

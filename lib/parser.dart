@@ -16,7 +16,7 @@
 ///
 /// [1]: https://en.wikipedia.org/wiki/Recursive_descent_parser
 /// [2]: http://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/
-library minic.src.parser;
+library minic.parser;
 
 import 'ast.dart';
 import 'scanner.dart';

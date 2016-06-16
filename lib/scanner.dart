@@ -2,13 +2,13 @@
 /// atomic part of the code, like operators, keywords, or names. We do this
 /// because it is easier to implement the parser if it doesn't need to handle
 /// the text processing that recognizes these patterns.
-library minic.src.scanner;
+library minic.scanner;
 
 import 'dart:convert' show UTF8;
 import 'package:source_span/source_span.dart';
 import 'package:verbose_regexp/verbose_regexp.dart';
 import 'memory.dart' show NumberType;
-import 'util.dart' show PeekIterator;
+import 'src/util.dart' show PeekIterator;
 
 /// Every [TokenType] has a `ValueExtractor`; It's a callback function that
 /// converts the string representation of a value literal to a meaningful value.

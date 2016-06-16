@@ -1,8 +1,8 @@
 import 'package:source_span/source_span.dart';
 import 'package:test/test.dart';
-import 'package:minic/src/ast.dart';
-import 'package:minic/src/parser.dart';
-import 'package:minic/src/scanner.dart';
+import 'package:minic/ast.dart';
+import 'package:minic/parser.dart';
+import 'package:minic/scanner.dart';
 
 addMainAndParse(code) => new Parser(
     new Scanner(new SourceFile(code +

@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:minic/src/memory.dart';
+import 'package:minic/memory.dart';
 
 void main() {
   group('[MemoryBlock]:', () {

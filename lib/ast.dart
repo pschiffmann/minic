@@ -1,9 +1,9 @@
 /// This module contains all classes that are used to represent a program as an
 /// [abstract syntax tree][1]. The root of every AST is a [Namespace] object.
-/// You can parse code into this structure using the `minic.src.parser` library.
+/// You can parse code into this structure using the `minic.parser` library.
 ///
 /// [1]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
-library minic.src.ast;
+library minic.ast;
 
 import 'dart:collection' show LinkedHashMap;
 
@@ -123,7 +123,7 @@ abstract class VariableType extends Definition {
 
 /// Represents a [basic type](http://en.cppreference.com/w/c/language/type).
 /// These are never created by the parser, but a list of all available basic
-/// types is defined in library `minic.src.language`.
+/// types is defined in library `minic.parser`.
 class BasicType extends VariableType {
   NumberType numberType;
 
@@ -140,7 +140,7 @@ class BasicType extends VariableType {
 
 /// Represents the void type for function return values. This object is never
 /// created by the parser, but a list of all available basic types is defined in
-/// library `minic.src.language`.
+/// library `minic.parser`.
 class VoidType extends VariableType {
   VoidType() : super('void', 0);
 }

@@ -1,7 +1,7 @@
 import 'dart:convert' show UTF8;
 import 'package:test/test.dart';
-import 'package:minic/src/scanner.dart';
-import 'package:minic/src/memory.dart';
+import 'package:minic/scanner.dart';
+import 'package:minic/memory.dart';
 import 'package:source_span/source_span.dart';
 
 void main() {

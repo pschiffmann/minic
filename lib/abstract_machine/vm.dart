@@ -19,7 +19,7 @@
 /// [1]: https://en.wikipedia.org/wiki/Instruction_set
 /// [2]: https://en.wikipedia.org/wiki/Virtual_machine
 /// [3]: https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
-library minic.src.cmachine;
+library minic.abstract_machine.vm;
 
 import 'dart:math' show pow;
 import '../memory.dart';
