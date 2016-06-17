@@ -348,6 +348,8 @@ class PushInstruction extends OverloadedInstruction {
 class PopInstruction extends Instruction {
   String get name => 'pop';
 
+  NumberType get immediateArgumentSize => NumberType.uint16;
+
   PopInstruction();
 
   void execute(VM vm, int numberOfBytes) {
