@@ -12,5 +12,12 @@ void main() {
       memory.setValue(0, NumberType.fp32, 1);
       expect(memory.getValue(0, NumberType.fp32), equals(1.0));
     });
+
+    test('handles range overflow by cropping most significant bits', () {
+      var memory = new MemoryBlock(8);
+
+      memory.setValue(0, NumberType.uint8, 257);
+      expect(memory.getValue(0, NumberType.uint8), equals(1));
+    });
   });
 }
