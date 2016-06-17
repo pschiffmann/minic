@@ -208,15 +208,19 @@ class VM {
 
   /// Initialize the VM with `memorySize` bytes available memory.
   ///
-  /// Throw an `AssertionError` when either `program.length` or `memorySize` are
-  /// greater than the addressing limit of 2^16 bytes (only in checked mode).
+  /// Throw an `ArgumentError` when either `program.length` or `memorySize` are
+  /// greater than the addressing limit of 2^16 bytes.
   VM(this.program, [int memorySize = /* pow(2, 16) */ 65536])
       : memory = new MemoryBlock(memorySize),
         stackPointer = memorySize,
         framePointer = memorySize,
         extremePointer = memorySize {
-    assert(program.buffer.lengthInBytes <= pow(2, 16));
-    assert(memorySize <= pow(2, 16));
+    if (program.buffer.lengthInBytes > pow(2, 16))
+      throw new ArgumentError.value(
+          program.buffer.lengthInBytes, 'program', 'maximum size is 2^16');
+    if (memorySize > pow(2, 16))
+      throw new ArgumentError.value(
+          memorySize, 'memorySize', 'maximum size is 2^16');
   }
 
   /// Run [program] until it terminates. Return the value returned from the
