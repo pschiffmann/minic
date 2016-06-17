@@ -248,13 +248,13 @@ class VM {
       throw new SegfaultSignal(programCounter, 'Undefined opcode');
     }
 
-    if (instruction.immediateArgumentSize == null) {
-      instruction.execute(this, null);
-    } else {
-      instruction.execute(this,
-          program.getValue(programCounter, instruction.immediateArgumentSize));
+    var immediateArgument;
+    if (instruction.immediateArgumentSize != null) {
+      immediateArgument =
+          program.getValue(programCounter, instruction.immediateArgumentSize);
       programCounter += instruction.immediateArgumentSize.sizeInBytes;
     }
+    instruction.execute(this, immediateArgument);
   }
 
   /// Read [memory] at address as the specified number type.
@@ -383,18 +383,21 @@ class FetchInstruction extends Instruction {
 
   FetchInstruction();
 
-  void execute(VM vm, num numberOfBytes) {
-    var address = vm.popStack(addressSize);
+  void execute(VM vm, int numberOfBytes) {
+    var sourceAddress = vm.popStack(addressSize);
+    var targetAddress = vm.stackPointer = vm.stackPointer - numberOfBytes;
     while (numberOfBytes > 0) {
       var chunk = const [
         NumberType.uint64,
         NumberType.uint32,
         NumberType.uint16,
         NumberType.uint8
-      ].firstWhere((numberType) => numberOfBytes >= numberType.size);
-      vm.pushStack(chunk, vm.readMemoryValue(address, chunk));
-      numberOfBytes -= chunk.size;
-      address += chunk.size;
+      ].firstWhere((numberType) => numberOfBytes >= numberType.sizeInBytes);
+      vm.setMemoryValue(
+          targetAddress, chunk, vm.readMemoryValue(sourceAddress, chunk));
+      numberOfBytes -= chunk.sizeInBytes;
+      sourceAddress += chunk.sizeInBytes;
+      targetAddress += chunk.sizeInBytes;
     }
   }
 }
@@ -416,10 +419,10 @@ class StoreInstruction extends Instruction {
         NumberType.uint32,
         NumberType.uint16,
         NumberType.uint8
-      ].firstWhere((numberType) => numberOfBytes >= numberType.size);
+      ].firstWhere((numberType) => numberOfBytes >= numberType.sizeInBytes);
       vm.setMemoryValue(address, chunk, vm.popStack(chunk));
-      numberOfBytes -= chunk.size;
-      address += chunk.size;
+      numberOfBytes -= chunk.sizeInBytes;
+      address += chunk.sizeInBytes;
     }
   }
 }
@@ -497,11 +500,13 @@ class CallInstruction extends Instruction {
   CallInstruction();
 
   void execute(VM vm, int offset) {
-    vm.programCounter = vm.popStack(addressSize);
+    var jumpTarget = vm.popStack(addressSize);
+    var oldStackPointer = vm.stackPointer;
     vm.pushStack(addressSize, vm.extremePointer);
     vm.pushStack(addressSize, vm.framePointer);
-    vm.pushStack(addressSize, vm.stackPointer + offset);
+    vm.pushStack(addressSize, oldStackPointer + offset);
     vm.pushStack(addressSize, vm.programCounter);
+    vm.programCounter = jumpTarget;
     vm.framePointer = vm.stackPointer;
   }
 }
