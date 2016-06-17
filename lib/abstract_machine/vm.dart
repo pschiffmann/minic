@@ -251,8 +251,8 @@ class VM {
     if (instruction.immediateArgumentSize == null) {
       instruction.execute(this, null);
     } else {
-      instruction.execute(
-          this, program.getValue(programCounter, NumberType.uint8));
+      instruction.execute(this,
+          program.getValue(programCounter, instruction.immediateArgumentSize));
       programCounter += instruction.immediateArgumentSize.sizeInBytes;
     }
   }
