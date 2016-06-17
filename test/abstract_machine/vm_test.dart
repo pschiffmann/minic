@@ -1,3 +1,4 @@
+import 'dart:math' show pow;
 import 'package:test/test.dart';
 import 'package:minic/abstract_machine/code_generator.dart' show instructionSet;
 import 'package:minic/abstract_machine/vm.dart';
@@ -72,4 +73,26 @@ void main() {
       expect(vm.programCounter, equals(6));
     });
   });
+
+  group('instruction set:', () {
+    group('push', () {
+      test('places immediate argument on the stack', () {
+        var values = {
+          NumberType.uint8: 11,
+          NumberType.sint16: -123,
+          NumberType.fp32: 4.25,
+          NumberType.fp64: 3.141e-20,
+          NumberType.sint64: -pow(2, 63)
+        };
+        values.forEach((numberType, value) {
+          encodeInstruction(new PushInstruction(numberType));
+          encodeImmediateArgument(numberType, value);
+
+          vm.executeNextInstruction();
+          expect(vm.popStack(numberType), equals(value));
+        });
+      });
+    });
+  });
+
 }
