@@ -19,5 +19,13 @@ void main() {
       memory.setValue(0, NumberType.uint8, 257);
       expect(memory.getValue(0, NumberType.uint8), equals(1));
     });
+
+    test('arranges bytes in big endian order', () {
+      var memory = new MemoryBlock(8);
+
+      memory.setValue(0, NumberType.uint16, 258);
+      expect(memory.getValue(0, NumberType.uint8), equals(1));
+      expect(memory.getValue(1, NumberType.uint8), equals(2));
+    });
   });
 }
