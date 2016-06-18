@@ -21,7 +21,6 @@
 /// [3]: https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 library minic.abstract_machine.vm;
 
-import 'dart:math' show pow;
 import '../memory.dart';
 
 /// All opcodes have a size of one byte.
@@ -210,15 +209,15 @@ class VM {
   ///
   /// Throw an `ArgumentError` when either `program.length` or `memorySize` are
   /// greater than the addressing limit of 2^16 bytes.
-  VM(this.program, [int memorySize = /* pow(2, 16) */ 65536])
+  VM(this.program, [int memorySize = 1 << 16])
       : memory = new MemoryBlock(memorySize),
         stackPointer = memorySize,
         framePointer = memorySize,
         extremePointer = memorySize {
-    if (program.buffer.lengthInBytes > pow(2, 16))
+    if (program.buffer.lengthInBytes > (1 << 16))
       throw new ArgumentError.value(
           program.buffer.lengthInBytes, 'program', 'maximum size is 2^16');
-    if (memorySize > pow(2, 16))
+    if (memorySize > (1 << 16))
       throw new ArgumentError.value(
           memorySize, 'memorySize', 'maximum size is 2^16');
   }
