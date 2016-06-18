@@ -35,13 +35,17 @@ void main() {
     });
 
     test('writing to out-of-bounds memory a address causes a segfault', () {
-      expect(() => vm.setMemoryValue(999, NumberType.uint8, 1), throwsSegfaultSignal);
-      expect(() => vm.setMemoryValue(-1, NumberType.uint8, 1), throwsSegfaultSignal);
+      expect(() => vm.setMemoryValue(999, NumberType.uint8, 1),
+          throwsSegfaultSignal);
+      expect(() => vm.setMemoryValue(-1, NumberType.uint8, 1),
+          throwsSegfaultSignal);
     });
 
     test('reading from out-of-bounds memory a address causes a segfault', () {
-      expect(() => vm.readMemoryValue(999, NumberType.uint8), throwsSegfaultSignal);
-      expect(() => vm.readMemoryValue(-1, NumberType.uint8), throwsSegfaultSignal);
+      expect(() => vm.readMemoryValue(999, NumberType.uint8),
+          throwsSegfaultSignal);
+      expect(
+          () => vm.readMemoryValue(-1, NumberType.uint8), throwsSegfaultSignal);
     });
 
     test('executing instruction not in memory causes a segfault', () {
@@ -57,12 +61,15 @@ void main() {
       expect(vm.executeNextInstruction, throwsSegfaultSignal);
     });
 
-    test('.executeNextInstruction() increases programCounter and respects immediate arguments', () {
+    test(
+        '.executeNextInstruction() increases programCounter '
+        'and respects immediate arguments', () {
       encodeInstruction(new PushInstruction(NumberType.uint8));
       encodeImmediateArgument(NumberType.uint8, 1);
       encodeInstruction(new PushInstruction(NumberType.uint16));
       encodeImmediateArgument(NumberType.uint16, 1);
-      encodeInstruction(new TypeConversionInstruction(NumberType.uint16, NumberType.uint8));
+      encodeInstruction(
+          new TypeConversionInstruction(NumberType.uint16, NumberType.uint8));
 
       vm.executeNextInstruction();
       expect(vm.programCounter, equals(2));
@@ -120,8 +127,8 @@ void main() {
         test('fetches memory chunks of $numberOfBytes bytes', () {
           var random = new Random(numberOfBytes);
           var dataAddress = random.nextInt(200);
-          var data = new List.generate(numberOfBytes,
-              (x) => random.nextInt(255));
+          var data =
+              new List.generate(numberOfBytes, (x) => random.nextInt(255));
 
           // create test data
           for (int i = 0; i < data.length; i++) {
@@ -147,8 +154,8 @@ void main() {
         test('moves memory chunks of $numberOfBytes bytes', () {
           var random = new Random(numberOfBytes);
           var dataAddress = random.nextInt(200);
-          var data = new List.generate(numberOfBytes,
-              (x) => random.nextInt(255));
+          var data =
+              new List.generate(numberOfBytes, (x) => random.nextInt(255));
 
           // create test data
           for (int i in data.reversed) {
@@ -192,8 +199,10 @@ void main() {
       test('throws HaltSignal with exit code from stack', () {
         vm.pushStack(NumberType.uint32, 156);
         encodeInstruction(new HaltInstruction());
-        expect(vm.executeNextInstruction, throwsA(predicate(
-            (signal) => signal is HaltSignal && signal.statusCode == 156)));
+        expect(
+            vm.executeNextInstruction,
+            throwsA(predicate(
+                (signal) => signal is HaltSignal && signal.statusCode == 156)));
       });
     });
 
@@ -230,7 +239,8 @@ void main() {
         vm.stackPointer = 155;
         vm.framePointer = 150;
         vm.extremePointer = 140;
-        var expectedNewStackPointer = vm.stackPointer - 4 * addressSize.sizeInBytes;
+        var expectedNewStackPointer =
+            vm.stackPointer - 4 * addressSize.sizeInBytes;
 
         encodeInstruction(new CallInstruction(), 78);
         vm.pushStack(addressSize, 199);
