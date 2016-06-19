@@ -61,15 +61,9 @@ class VM {
     new CallInstruction(),
     new EnterFunctionInstruction(),
     new ReturnInstruction(),
-    new TypeConversionInstruction(NumberType.uint8, NumberType.uint16),
-    new TypeConversionInstruction(NumberType.uint16, NumberType.uint32),
-    new TypeConversionInstruction(NumberType.uint32, NumberType.uint64),
     new TypeConversionInstruction(NumberType.sint8, NumberType.sint16),
     new TypeConversionInstruction(NumberType.sint16, NumberType.sint32),
     new TypeConversionInstruction(NumberType.sint32, NumberType.sint64),
-    new TypeConversionInstruction(NumberType.uint16, NumberType.uint8),
-    new TypeConversionInstruction(NumberType.uint32, NumberType.uint16),
-    new TypeConversionInstruction(NumberType.uint64, NumberType.uint32),
     new TypeConversionInstruction(NumberType.uint32, NumberType.fp32),
     new TypeConversionInstruction(NumberType.sint32, NumberType.fp32),
     new TypeConversionInstruction(NumberType.fp32, NumberType.uint32),
@@ -543,29 +537,28 @@ class ReturnInstruction extends Instruction {
 
 /// Converts the top stack element between the specified types. Instead of
 /// reinterpreting the memory, the value is retained. For example, executing a
-/// type conversion `double32↦uint32` on the value `1.0` yields `1` (which has
+/// type conversion `float↦uint32` on the value `1.0` yields `1` (which has
 /// a different bit pattern).
 ///
-/// The VM instruction set only supports the following subset of all to/from
-/// conversion pairs:
+/// The VM instruction set only supports a small subset of all to/from
+/// conversion pairs, because a large part can be constructed with these and
+/// other instructions:
 ///
-/// integer width expansion – only conversion between adjacent sizes.
+///   * Casts between unsigned sizes can be done with `push<n> 0` and `pop n`,
+///     where _n_ is the size difference.
+///   * Reducing the size of signed integers can be done with `pop n`.
+///   * Other casts not supported natively can be constructed in multiple steps;
+///     for example `sint16↦float` can be implemented as
+///     `sint16↦sint32, sint32↦float`.
 ///
-///     uint8↦uint16
-///     uint16↦uint32
-///     uint32↦uint64
+/// The implemented instances are signed integer width expansion between
+/// adjacent sizes,
+///
 ///     sint8↦sint16
 ///     sint16↦sint32
 ///     sint32↦sint64
 ///
-/// integer width reduction – these simply crop the most significant bytes,
-/// which yields identical behaviour for signed and unsigned values.
-///
-///     uint16↦uint8
-///     uint32↦uint16
-///     uint64↦uint32
-///
-/// int / float conversion – only between same-size types.
+/// int/float conversion between same-size types,
 ///
 ///     uint32↦float
 ///     sint32↦float
@@ -576,7 +569,7 @@ class ReturnInstruction extends Instruction {
 ///     double↦uint64
 ///     double↦sint64
 ///
-/// float width
+/// and float/double conversion.
 ///
 ///     float↦double
 ///     double↦float
