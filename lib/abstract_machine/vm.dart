@@ -104,12 +104,6 @@ class VM {
     new ModuloInstruction(NumberType.uint64),
     new ModuloInstruction(NumberType.fp32),
     new ModuloInstruction(NumberType.fp64),
-    new ArithmeticNegateInstruction(NumberType.sint8),
-    new ArithmeticNegateInstruction(NumberType.sint16),
-    new ArithmeticNegateInstruction(NumberType.sint32),
-    new ArithmeticNegateInstruction(NumberType.sint64),
-    new ArithmeticNegateInstruction(NumberType.fp32),
-    new ArithmeticNegateInstruction(NumberType.fp64),
     new BitwiseNotInstruction(NumberType.uint8),
     new BitwiseNotInstruction(NumberType.uint16),
     new BitwiseNotInstruction(NumberType.uint32),
@@ -649,15 +643,6 @@ class ModuloInstruction extends ArithmeticOperationInstruction {
   ModuloInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a % b;
-}
-
-/// Arithmetic inversion of the top stack element.
-class ArithmeticNegateInstruction extends OverloadedInstruction {
-  String get name => 'neg<$valueType>';
-
-  ArithmeticNegateInstruction(NumberType valueType) : super(valueType);
-
-  void execute(VM vm, _) => vm.pushStack(valueType, -vm.popStack(valueType));
 }
 
 /// Bitwise inverse of the top stack element.
