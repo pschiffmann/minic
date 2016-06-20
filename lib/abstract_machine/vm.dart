@@ -577,17 +577,16 @@ class TypeConversionInstruction extends Instruction {
   void execute(VM vm, _) => vm.pushStack(to, vm.popStack(from));
 }
 
-/// Superclass for all side effect-free arithmetic, bitwise and logical
-/// operators with two operands. Subclasses need only implement the `calculate`
-/// method.
+/// Superclass for all side effect-free arithmetic and bitwise operators with
+/// two operands. Subclasses need only implement the `calculate` method.
 abstract class ArithmeticOperationInstruction extends OverloadedInstruction {
   ArithmeticOperationInstruction(NumberType numberType) : super(numberType);
 
   /// Pop two `numberType` elements from the stack, pass them to `calculate`
   /// and push the result back onto the stack.
   void execute(VM vm, _) {
-    var arg1 = vm.popStack(valueType);
     var arg2 = vm.popStack(valueType);
+    var arg1 = vm.popStack(valueType);
     vm.pushStack(valueType, calculate(arg1, arg2));
   }
 
@@ -668,49 +667,65 @@ class BitwiseExclusiveOrInstruction extends ArithmeticOperationInstruction {
   int calculate(int a, int b) => a ^ b;
 }
 
+/// Superclass for all side effect-free comparison operators. Subclasses need
+/// only implement the `compare` method.
+///
+/// The result is always a single byte, indipendent from the operand size.
+abstract class ComparisonInstruction extends OverloadedInstruction {
+  ComparisonInstruction(numberType) : super(numberType);
+
+  void execute(VM vm, _) {
+    var op2 = vm.popStack(valueType);
+    var op1 = vm.popStack(valueType);
+    vm.pushStack(NumberType.uint8, compare(op1, op2) ? 1 : 0);
+  }
+
+  bool compare(num a, num b);
+}
+
 /// Compares the two top stack elements using `==`.
-class EqualsInstruction extends ArithmeticOperationInstruction {
+class EqualsInstruction extends ComparisonInstruction {
   String get name => 'eq<${valueType.sizeInBits}>';
 
   EqualsInstruction(numberType) : super(numberType);
 
-  int calculate(num a, num b) => a == b ? 1 : 0;
+  bool compare(num a, num b) => a == b;
 }
 
 /// Compares the two top stack elements using `>`.
-class GreaterThanInstruction extends ArithmeticOperationInstruction {
+class GreaterThanInstruction extends ComparisonInstruction {
   String get name => 'gt<$valueType>';
 
   GreaterThanInstruction(numberType) : super(numberType);
 
-  int calculate(num a, num b) => a > b ? 1 : 0;
+  bool compare(num a, num b) => a > b;
 }
 
 /// Compares the two top stack elements using `≥`.
-class GreaterEqualsInstruction extends ArithmeticOperationInstruction {
+class GreaterEqualsInstruction extends ComparisonInstruction {
   String get name => 'ge<$valueType>';
 
   GreaterEqualsInstruction(numberType) : super(numberType);
 
-  int calculate(num a, num b) => a >= b ? 1 : 0;
+  bool compare(num a, num b) => a >= b;
 }
 
 /// Compares the two top stack elements using `<`.
-class LessThanInstruction extends ArithmeticOperationInstruction {
+class LessThanInstruction extends ComparisonInstruction {
   String get name => 'lt<$valueType>';
 
   LessThanInstruction(numberType) : super(numberType);
 
-  int calculate(num a, num b) => a < b ? 1 : 0;
+  bool compare(num a, num b) => a < b;
 }
 
 /// Compares the two top stack elements using `≤`.
-class LessEqualsInstruction extends ArithmeticOperationInstruction {
+class LessEqualsInstruction extends ComparisonInstruction {
   String get name => 'le<$valueType>';
 
   LessEqualsInstruction(numberType) : super(numberType);
 
-  int calculate(num a, num b) => a <= b ? 1 : 0;
+  bool compare(num a, num b) => a <= b;
 }
 
 /// Logical negation of the top stack element.
