@@ -372,6 +372,39 @@ void main() {
           testAdd(NumberType.fp64, 2.0, -2.5, -0.5);
         });
       });
+
+      group('sub', () {
+        var testSub = (NumberType numberType, num op1, num op2, num result) =>
+            testArithmetic(new SubtractInstruction(numberType), op1, op2, result);
+
+        group('<uint>', () {
+          test('subtracts values', () {
+            testSub(NumberType.uint8, 12, 11, 1);
+            testSub(NumberType.uint64, 1 << 33, 1 << 33, 0);
+          });
+
+          test('overflows', () {
+            testSub(NumberType.uint8, 11, 12, 255);
+          });
+        });
+
+        group('<sint>', () {
+          test('subtracts values', () {
+            testSub(NumberType.sint8, -5, 3, -8);
+            testSub(NumberType.sint64, -(1 << 40), -(1 << 40), 0);
+          });
+
+          test('overflows', () {
+            testSub(NumberType.sint8, 2, 131, 127);
+          });
+        });
+
+        test('<float> subtracts values', () {
+          testSub(NumberType.fp32, 8.0, -4.0, 12.0);
+          testSub(NumberType.fp64, 3.25, 1.75, 1.5);
+        });
+      });
+
     });
   });
 }
