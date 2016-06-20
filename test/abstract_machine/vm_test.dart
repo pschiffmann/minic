@@ -318,5 +318,60 @@ void main() {
         testConversion(NumberType.fp64, NumberType.fp32, 0.5, 0.5);
       });
     });
+
+    group('arithmetic:', () {
+      var testArithmetic = (ArithmeticOperationInstruction instruction, num op1,
+          num op2, num result) {
+        vm.pushStack(instruction.valueType, op1);
+        vm.pushStack(instruction.valueType, op2);
+        encodeInstruction(instruction);
+        vm.executeNextInstruction();
+        expect(vm.popStack(instruction.valueType), equals(result));
+      };
+
+      group('add', () {
+        var testAdd = (NumberType numberType, num op1, num op2, num result) =>
+            testArithmetic(new AddInstruction(numberType), op1, op2, result);
+
+        group('<uint>', () {
+          test('adds values', () {
+            testAdd(NumberType.uint8, 11, 12, 23);
+            testAdd(NumberType.uint16, 500, 1, 501);
+            testAdd(NumberType.uint32, 100000, 100002, 200002);
+            testAdd(NumberType.uint64, 1 << 33, 1 << 34, 3 << 33);
+          });
+
+          test('overflows', () {
+            for (var numberType in const [
+              NumberType.uint8,
+              NumberType.uint16,
+              NumberType.uint32,
+              NumberType.uint64
+            ]) {
+              testAdd(numberType, numberType.bitmask, 2, 1);
+            }
+          });
+        });
+
+        group('<sint>', () {
+          test('adds values', () {
+            testAdd(NumberType.sint8, 50, -3, 47);
+            testAdd(NumberType.sint16, -300, 5, -295);
+            testAdd(NumberType.sint32, pow(2, 28), 1, pow(2, 28) + 1);
+            testAdd(NumberType.sint64, -pow(2, 40), -pow(2, 9), -pow(2, 40) + -pow(2, 9));
+          });
+
+          test('overflows', () {
+            testAdd(NumberType.sint8, 127, 1, -128);
+            testAdd(NumberType.sint16, -pow(2, 15), -1, pow(2, 15) -1);
+          });
+        });
+
+        test('<float> adds values', () {
+          testAdd(NumberType.fp32, 2.0, 2.0, 4.0);
+          testAdd(NumberType.fp64, 2.0, -2.5, -0.5);
+        });
+      });
+    });
   });
 }
