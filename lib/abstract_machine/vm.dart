@@ -567,10 +567,7 @@ class TypeConversionInstruction extends Instruction {
   final NumberType from;
   final NumberType to;
 
-  String get name => from.memoryInterpretation == NumberType.float ||
-          from.sizeInBytes < to.sizeInBytes
-      ? 'cast<$from↦$to>'
-      : 'cast<${_unifyIntegerNames(from)}↦${_unifyIntegerNames(to)}>';
+  String get name => 'cast<$from↦$to>';
 
   TypeConversionInstruction(this.from, this.to);
 

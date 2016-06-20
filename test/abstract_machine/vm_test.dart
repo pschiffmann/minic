@@ -1,4 +1,4 @@
-import 'dart:math' show pow, Random;
+import 'dart:math';
 import 'package:test/test.dart';
 import 'package:minic/abstract_machine/code_generator.dart' show instructionSet;
 import 'package:minic/abstract_machine/vm.dart';
@@ -68,8 +68,7 @@ void main() {
       encodeImmediateArgument(NumberType.uint8, 1);
       encodeInstruction(new PushInstruction(NumberType.uint16));
       encodeImmediateArgument(NumberType.uint16, 1);
-      encodeInstruction(
-          new TypeConversionInstruction(NumberType.uint16, NumberType.uint8));
+      encodeInstruction(new AddInstruction(NumberType.uint8));
 
       vm.executeNextInstruction();
       expect(vm.programCounter, equals(2));
@@ -282,6 +281,41 @@ void main() {
         encodeImmediateArgument(addressSize, 23);
         vm.executeNextInstruction();
         expect(vm.extremePointer, equals(30));
+      });
+    });
+
+    group('cast', () {
+      var testConversion = (NumberType from, NumberType to, num original, [num result]) {
+        result ??= original;
+        vm.pushStack(from, original);
+        encodeInstruction(new TypeConversionInstruction(from, to));
+        vm.executeNextInstruction();
+        expect(vm.popStack(to), equals(result));
+      };
+
+      test('converts between signed widths', () {
+        testConversion(NumberType.sint8, NumberType.sint16, -128);
+        testConversion(NumberType.sint16, NumberType.sint32, 444);
+        testConversion(NumberType.sint32, NumberType.sint64, -8);
+      });
+
+      test('converts between signed and float', () {
+        testConversion(NumberType.sint32, NumberType.fp32, -120, -120.0);
+        testConversion(NumberType.fp32, NumberType.sint32, 52.4, 52);
+        testConversion(NumberType.sint64, NumberType.fp64, -1, -1.0);
+        testConversion(NumberType.fp64, NumberType.sint64, -1e10, -pow(10, 10));
+      });
+
+      test('converts between unsigned and float', () {
+        testConversion(NumberType.uint32, NumberType.fp32, 1234, 1234.0);
+        testConversion(NumberType.fp32, NumberType.uint32, 0.9, 0);
+        testConversion(NumberType.uint64, NumberType.fp64, 2 << 50, 2 << 50);
+        testConversion(NumberType.fp64, NumberType.uint64, PI, 3);
+      });
+
+      test('converts between float and double', () {
+        testConversion(NumberType.fp32, NumberType.fp64, 64.0, 64.0);
+        testConversion(NumberType.fp64, NumberType.fp32, 0.5, 0.5);
       });
     });
   });
