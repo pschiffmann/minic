@@ -104,10 +104,6 @@ class VM {
     new ModuloInstruction(NumberType.uint64),
     new ModuloInstruction(NumberType.fp32),
     new ModuloInstruction(NumberType.fp64),
-    new BitwiseNotInstruction(NumberType.uint8),
-    new BitwiseNotInstruction(NumberType.uint16),
-    new BitwiseNotInstruction(NumberType.uint32),
-    new BitwiseNotInstruction(NumberType.uint64),
     new BitwiseAndInstruction(NumberType.uint8),
     new BitwiseAndInstruction(NumberType.uint16),
     new BitwiseAndInstruction(NumberType.uint32),
@@ -643,16 +639,6 @@ class ModuloInstruction extends ArithmeticOperationInstruction {
   ModuloInstruction(numberType) : super(numberType);
 
   int calculate(int a, int b) => a % b;
-}
-
-/// Bitwise inverse of the top stack element.
-class BitwiseNotInstruction extends OverloadedInstruction {
-  String get name => 'inv<${valueType.sizeInBits}>';
-
-  BitwiseNotInstruction(NumberType valueType) : super(valueType);
-
-  void execute(VM vm, _) =>
-      vm.pushStack(valueType, ~(vm.popStack(valueType) as int));
 }
 
 /// Bitwise _and_ of the two top stack elements.
