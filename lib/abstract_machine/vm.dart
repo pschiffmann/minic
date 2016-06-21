@@ -96,12 +96,20 @@ class VM {
     new DivideInstruction(NumberType.uint16),
     new DivideInstruction(NumberType.uint32),
     new DivideInstruction(NumberType.uint64),
+    new DivideInstruction(NumberType.sint8),
+    new DivideInstruction(NumberType.sint16),
+    new DivideInstruction(NumberType.sint32),
+    new DivideInstruction(NumberType.sint64),
     new DivideInstruction(NumberType.fp32),
     new DivideInstruction(NumberType.fp64),
     new ModuloInstruction(NumberType.uint8),
     new ModuloInstruction(NumberType.uint16),
     new ModuloInstruction(NumberType.uint32),
     new ModuloInstruction(NumberType.uint64),
+    new ModuloInstruction(NumberType.sint8),
+    new ModuloInstruction(NumberType.sint16),
+    new ModuloInstruction(NumberType.sint32),
+    new ModuloInstruction(NumberType.sint64),
     new ModuloInstruction(NumberType.fp32),
     new ModuloInstruction(NumberType.fp64),
     new BitwiseAndInstruction(NumberType.uint8),
@@ -620,7 +628,7 @@ class MultiplyInstruction extends ArithmeticOperationInstruction {
 
 /// Divides the two top stack elements.
 class DivideInstruction extends ArithmeticOperationInstruction {
-  String get name => 'div<${_unifyIntegerNames(valueType)}>';
+  String get name => 'div<$valueType>';
 
   DivideInstruction(numberType) : super(numberType);
 
@@ -630,7 +638,7 @@ class DivideInstruction extends ArithmeticOperationInstruction {
 
 /// Calculates the modulo of the two top stack elements.
 class ModuloInstruction extends ArithmeticOperationInstruction {
-  String get name => 'mod<${_unifyIntegerNames(valueType)}>';
+  String get name => 'mod<$valueType>';
 
   ModuloInstruction(numberType) : super(numberType);
 

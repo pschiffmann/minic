@@ -285,7 +285,8 @@ void main() {
     });
 
     group('cast', () {
-      var testConversion = (NumberType from, NumberType to, num original, [num result]) {
+      var testConversion =
+          (NumberType from, NumberType to, num original, [num result]) {
         result ??= original;
         vm.pushStack(from, original);
         encodeInstruction(new TypeConversionInstruction(from, to));
@@ -358,12 +359,13 @@ void main() {
             testAdd(NumberType.sint8, 50, -3, 47);
             testAdd(NumberType.sint16, -300, 5, -295);
             testAdd(NumberType.sint32, pow(2, 28), 1, pow(2, 28) + 1);
-            testAdd(NumberType.sint64, -pow(2, 40), -pow(2, 9), -pow(2, 40) + -pow(2, 9));
+            testAdd(NumberType.sint64, -pow(2, 40), -pow(2, 9),
+                -pow(2, 40) + -pow(2, 9));
           });
 
           test('overflows', () {
             testAdd(NumberType.sint8, 127, 1, -128);
-            testAdd(NumberType.sint16, -pow(2, 15), -1, pow(2, 15) -1);
+            testAdd(NumberType.sint16, -pow(2, 15), -1, pow(2, 15) - 1);
           });
         });
 
@@ -375,7 +377,8 @@ void main() {
 
       group('sub', () {
         var testSub = (NumberType numberType, num op1, num op2, num result) =>
-            testArithmetic(new SubtractInstruction(numberType), op1, op2, result);
+            testArithmetic(
+                new SubtractInstruction(numberType), op1, op2, result);
 
         group('<uint>', () {
           test('subtracts values', () {
@@ -405,6 +408,77 @@ void main() {
         });
       });
 
+      group('mul', () {
+        var testMul = (NumberType numberType, num op1, num op2, num result) =>
+            testArithmetic(
+                new MultiplyInstruction(numberType), op1, op2, result);
+
+        group('<uint>', () {
+          test('multiplies values', () {
+            testMul(NumberType.uint8, 8, 9, 72);
+            testMul(NumberType.uint64, 1 << 30, 1 << 10, 1 << 40);
+          });
+
+          test('overflows', () {
+            testMul(NumberType.uint8, 100, 100, 16);
+          });
+        });
+
+        group('<sint>', () {
+          test('multiplies values', () {
+            testMul(NumberType.sint8, -7, -6, 42);
+            testMul(NumberType.sint64, 1 << 40, -2, -(1 << 41));
+          });
+
+          test('overflows', () {
+            testMul(NumberType.sint8, 12, 12, -112);
+          });
+        });
+
+        test('<float> multiplies values', () {
+          testMul(NumberType.fp32, 0.5, -0.5, -0.25);
+          testMul(NumberType.fp64, PI, LN2, PI * LN2);
+        });
+      });
+
+      group('div', () {
+        var testDiv = (NumberType numberType, num op1, num op2, num result) =>
+            testArithmetic(new DivideInstruction(numberType), op1, op2, result);
+
+        group('<uint>', () {
+          test('divides values', () {
+            testDiv(NumberType.uint8, 10, 2, 5);
+            testDiv(NumberType.uint64, 1 << 45, 4, 1 << 43);
+          });
+
+          test('rounds down', () {
+            testDiv(NumberType.uint32, 100000, 30000, 3);
+          });
+        });
+
+        test('<sint> divides values', () {
+          testDiv(NumberType.sint8, -21, 3, -7);
+        });
+
+        test('<float> divides values', () {
+          testDiv(NumberType.fp32, 64, 32, 2);
+          testDiv(NumberType.fp64, 19, 10, 1.9);
+        });
+      });
+
+      group('mod', () {
+        var testMod = (NumberType numberType, num op1, num op2, num result) =>
+            testArithmetic(new ModuloInstruction(numberType), op1, op2, result);
+
+        test('<uint> calculates remainder', () {
+          testMod(NumberType.uint8, 147, 12, 3);
+          testMod(NumberType.uint64, (1 << 45) + 1, 2, 1);
+        });
+
+        test('<sint> calculates remainder', () {
+          testMod(NumberType.sint8, 69, -16, 5);
+        });
+      });
     });
   });
 }
