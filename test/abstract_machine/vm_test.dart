@@ -479,6 +479,63 @@ void main() {
           testMod(NumberType.sint8, 69, -16, 5);
         });
       });
+
+      group('and', () {
+        var testAnd =
+            (NumberType numberType, String op1, String op2, String result) =>
+                testArithmetic(
+                    new BitwiseAndInstruction(numberType),
+                    int.parse(op1, radix: 2),
+                    int.parse(op2, radix: 2),
+                    int.parse(result, radix: 2));
+
+        test('calculates bitwise and', () {
+          testAnd(NumberType.uint8, '10101010', '00001111', '00001010');
+          testAnd(
+              NumberType.uint64,
+              '1111000011110000111100001111000011110000111100001111000011110000',
+              '1010010001000010000010000001000000010000000010000000001000000000',
+              '1010000001000000000000000001000000010000000000000000000000000000');
+        });
+      });
+
+      group('or', () {
+        var testOr =
+            (NumberType numberType, String op1, String op2, String result) =>
+                testArithmetic(
+                    new BitwiseOrInstruction(numberType),
+                    int.parse(op1, radix: 2),
+                    int.parse(op2, radix: 2),
+                    int.parse(result, radix: 2));
+
+        test('calculates bitwise and', () {
+          testOr(NumberType.uint8, '10101010', '00001111', '10101111');
+          testOr(
+              NumberType.uint64,
+              '1111000011110000111100001111000011110000111100001111000011110000',
+              '1010010001000010000010000001000000010000000010000000001000000000',
+              '1111010011110010111110001111000011110000111110001111001011110000');
+        });
+      });
+
+      group('xor', () {
+        var testXor =
+            (NumberType numberType, String op1, String op2, String result) =>
+                testArithmetic(
+                    new BitwiseExclusiveOrInstruction(numberType),
+                    int.parse(op1, radix: 2),
+                    int.parse(op2, radix: 2),
+                    int.parse(result, radix: 2));
+
+        test('calculates bitwise and', () {
+          testXor(NumberType.uint8, '10101010', '00001111', '10100101');
+          testXor(
+              NumberType.uint64,
+              '1111000011110000111100001111000011110000111100001111000011110000',
+              '1010010001000010000010000001000000010000000010000000001000000000',
+              '0101010010110010111110001110000011100000111110001111001011110000');
+        });
+      });
     });
   });
 }
