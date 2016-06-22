@@ -537,5 +537,46 @@ void main() {
         });
       });
     });
+
+    group('comparison:', () {
+      var compare = (ComparisonInstruction instruction, num op1, num op2) {
+        vm.pushStack(instruction.valueType, op1);
+        vm.pushStack(instruction.valueType, op2);
+        encodeInstruction(instruction);
+        vm.executeNextInstruction();
+        return vm.popStack(NumberType.uint8) > 0;
+      };
+
+      group('eq', () {
+        var compareEq = (NumberType numberType, num op1, num op2) =>
+            compare(new EqualsInstruction(numberType), op1, op2);
+
+        test('<uint>', () {
+          expect(compareEq(NumberType.uint8, 42, 42), isTrue);
+          expect(compareEq(NumberType.uint8, 5, 0), isFalse);
+          expect(compareEq(NumberType.uint64, 1 << 63, 1 << 63), isTrue);
+        });
+
+        test('<sint>', () {
+          expect(compareEq(NumberType.uint8, -120, -120), isTrue);
+          expect(compareEq(NumberType.uint8, -100, 100), isFalse);
+          expect(compareEq(NumberType.uint64, -(1 << 50), -(1 << 50)), isTrue);
+        });
+
+        test('<float>', () {
+          expect(compareEq(NumberType.fp32, 123.7, 123.7), isTrue);
+          expect(compareEq(NumberType.fp32, .0, -.0), isTrue);
+          expect(compareEq(NumberType.fp32, 123.7, 123.8), isFalse);
+          expect(compareEq(NumberType.fp32, double.NAN, double.NAN), isFalse);
+        });
+
+        test('<double>', () {
+          expect(compareEq(NumberType.fp64, PI, PI), isTrue);
+          expect(compareEq(NumberType.fp64, .0, -.0), isTrue);
+          expect(compareEq(NumberType.fp64, double.NAN, double.NAN), isFalse);
+        });
+      });
+    });
+
   });
 }

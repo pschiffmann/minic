@@ -128,6 +128,8 @@ class VM {
     new EqualsInstruction(NumberType.uint16),
     new EqualsInstruction(NumberType.uint32),
     new EqualsInstruction(NumberType.uint64),
+    new EqualsInstruction(NumberType.fp32),
+    new EqualsInstruction(NumberType.fp64),
     new GreaterThanInstruction(NumberType.uint8),
     new GreaterThanInstruction(NumberType.uint16),
     new GreaterThanInstruction(NumberType.uint32),
@@ -690,7 +692,7 @@ abstract class ComparisonInstruction extends OverloadedInstruction {
 
 /// Compares the two top stack elements using `==`.
 class EqualsInstruction extends ComparisonInstruction {
-  String get name => 'eq<${valueType.sizeInBits}>';
+  String get name => 'eq<${_unifyIntegerNames(valueType)}>';
 
   EqualsInstruction(numberType) : super(numberType);
 
