@@ -576,6 +576,62 @@ void main() {
           expect(compareEq(NumberType.fp64, double.NAN, double.NAN), isFalse);
         });
       });
+
+      group('gt', () {
+        var compareGt = (NumberType numberType, num op1, num op2) =>
+            compare(new GreaterThanInstruction(numberType), op1, op2);
+
+        test('<uint>', () {
+          expect(compareGt(NumberType.uint8, 5, 3), isTrue);
+          expect(compareGt(NumberType.uint8, 3, 5), isFalse);
+          expect(compareGt(NumberType.uint8, 3, 3), isFalse);
+        });
+
+        test('<sint>', () {
+          expect(compareGt(NumberType.sint8, -99, -100), isTrue);
+          expect(compareGt(NumberType.sint8, -100, 99), isFalse);
+        });
+
+        test('<float>', () {
+          expect(compareGt(NumberType.fp32, .001, .0001), isTrue);
+          expect(compareGt(NumberType.fp32, double.INFINITY, 5), isTrue);
+          expect(compareGt(NumberType.fp32, 8, 12), isFalse);
+          expect(compareGt(NumberType.fp32, double.NAN, double.NAN), isFalse);
+        });
+
+        test('<double>', () {
+          expect(compareGt(NumberType.fp64, -1000, double.NEGATIVE_INFINITY), isTrue);
+          expect(compareGt(NumberType.fp64, double.INFINITY, double.INFINITY), isFalse);
+          expect(compareGt(NumberType.fp64, double.NAN, double.NAN), isFalse);
+        });
+      });
+
+      group('ge', () {
+        var compareGe = (NumberType numberType, num op1, num op2) =>
+            compare(new GreaterEqualsInstruction(numberType), op1, op2);
+
+        test('<uint>', () {
+          expect(compareGe(NumberType.uint8, 6, 2), isTrue);
+          expect(compareGe(NumberType.uint8, 2, 6), isFalse);
+          expect(compareGe(NumberType.uint8, 2, 2), isTrue);
+        });
+
+        test('<sint>', () {
+          expect(compareGe(NumberType.sint8, -7, -100), isTrue);
+          expect(compareGe(NumberType.sint8, -7, -7), isTrue);
+        });
+
+        test('<float>', () {
+          expect(compareGe(NumberType.fp32, .001, .0001), isTrue);
+          expect(compareGe(NumberType.fp32, .001, .001), isTrue);
+          expect(compareGe(NumberType.fp32, .001, .01), isFalse);
+        });
+
+        test('<double>', () {
+          expect(compareGe(NumberType.fp64, 50, 45), isTrue);
+          expect(compareGe(NumberType.fp64, double.NAN, double.NAN), isFalse);
+        });
+      });
     });
   });
 }
