@@ -150,26 +150,6 @@ class VM {
     new GreaterEqualsInstruction(NumberType.sint64),
     new GreaterEqualsInstruction(NumberType.fp32),
     new GreaterEqualsInstruction(NumberType.fp64),
-    new LessThanInstruction(NumberType.uint8),
-    new LessThanInstruction(NumberType.uint16),
-    new LessThanInstruction(NumberType.uint32),
-    new LessThanInstruction(NumberType.uint64),
-    new LessThanInstruction(NumberType.sint8),
-    new LessThanInstruction(NumberType.sint16),
-    new LessThanInstruction(NumberType.sint32),
-    new LessThanInstruction(NumberType.sint64),
-    new LessThanInstruction(NumberType.fp32),
-    new LessThanInstruction(NumberType.fp64),
-    new LessEqualsInstruction(NumberType.uint8),
-    new LessEqualsInstruction(NumberType.uint16),
-    new LessEqualsInstruction(NumberType.uint32),
-    new LessEqualsInstruction(NumberType.uint64),
-    new LessEqualsInstruction(NumberType.sint8),
-    new LessEqualsInstruction(NumberType.sint16),
-    new LessEqualsInstruction(NumberType.sint32),
-    new LessEqualsInstruction(NumberType.sint64),
-    new LessEqualsInstruction(NumberType.fp32),
-    new LessEqualsInstruction(NumberType.fp64),
     new ToggleBooleanInstruction()
   ]);
 
@@ -715,24 +695,6 @@ class GreaterEqualsInstruction extends ComparisonInstruction {
   GreaterEqualsInstruction(numberType) : super(numberType);
 
   bool compare(num a, num b) => a >= b;
-}
-
-/// Compares the two top stack elements using `<`.
-class LessThanInstruction extends ComparisonInstruction {
-  String get name => 'lt<$valueType>';
-
-  LessThanInstruction(numberType) : super(numberType);
-
-  bool compare(num a, num b) => a < b;
-}
-
-/// Compares the two top stack elements using `≤`.
-class LessEqualsInstruction extends ComparisonInstruction {
-  String get name => 'le<$valueType>';
-
-  LessEqualsInstruction(numberType) : super(numberType);
-
-  bool compare(num a, num b) => a <= b;
 }
 
 /// Logical negation of the top stack element.
