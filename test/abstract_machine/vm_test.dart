@@ -558,9 +558,9 @@ void main() {
         });
 
         test('<sint>', () {
-          expect(compareEq(NumberType.uint8, -120, -120), isTrue);
-          expect(compareEq(NumberType.uint8, -100, 100), isFalse);
-          expect(compareEq(NumberType.uint64, -(1 << 50), -(1 << 50)), isTrue);
+          expect(compareEq(NumberType.sint8, -120, -120), isTrue);
+          expect(compareEq(NumberType.sint8, -100, 100), isFalse);
+          expect(compareEq(NumberType.sint64, -(1 << 50), -(1 << 50)), isTrue);
         });
 
         test('<float>', () {
@@ -577,6 +577,5 @@ void main() {
         });
       });
     });
-
   });
 }
