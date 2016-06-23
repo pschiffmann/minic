@@ -600,8 +600,10 @@ void main() {
         });
 
         test('<double>', () {
-          expect(compareGt(NumberType.fp64, -1000, double.NEGATIVE_INFINITY), isTrue);
-          expect(compareGt(NumberType.fp64, double.INFINITY, double.INFINITY), isFalse);
+          expect(compareGt(NumberType.fp64, -1000, double.NEGATIVE_INFINITY),
+              isTrue);
+          expect(compareGt(NumberType.fp64, double.INFINITY, double.INFINITY),
+              isFalse);
           expect(compareGt(NumberType.fp64, double.NAN, double.NAN), isFalse);
         });
       });
@@ -631,6 +633,29 @@ void main() {
           expect(compareGe(NumberType.fp64, 50, 45), isTrue);
           expect(compareGe(NumberType.fp64, double.NAN, double.NAN), isFalse);
         });
+      });
+    });
+
+    group('not', () {
+      test('toggles between 0 and 1', () {
+        vm.pushStack(NumberType.uint8, 0);
+        encodeInstruction(new ToggleBooleanInstruction());
+        encodeInstruction(new ToggleBooleanInstruction());
+
+        vm.executeNextInstruction();
+        expect(
+            vm.readMemoryValue(vm.stackPointer, NumberType.uint8), equals(1));
+        vm.executeNextInstruction();
+        expect(
+            vm.readMemoryValue(vm.stackPointer, NumberType.uint8), equals(0));
+      });
+
+      test('recognizes non-zero values as true', () {
+        vm.pushStack(NumberType.uint8, 123);
+        encodeInstruction(new ToggleBooleanInstruction());
+        vm.executeNextInstruction();
+        expect(
+            vm.readMemoryValue(vm.stackPointer, NumberType.uint8), equals(0));
       });
     });
   });
