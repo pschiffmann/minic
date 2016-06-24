@@ -11,7 +11,7 @@ VM vm;
 MemoryBlock program;
 int _firstUnusedByteInProgram;
 
-void encodeInstruction(Instruction instruction, [int address]) =>
+void encodeOperation(AluOperation instruction, [int address]) =>
     program.setValue(address ?? _firstUnusedByteInProgram++, NumberType.uint8,
         instructionSet.lookup(instruction).opcode);
 
@@ -64,11 +64,11 @@ void main() {
     test(
         '.executeNextInstruction() increases programCounter '
         'and respects immediate arguments', () {
-      encodeInstruction(new PushInstruction(NumberType.uint8));
+      encodeOperation(new PushOperation(NumberType.uint8));
       encodeImmediateArgument(NumberType.uint8, 1);
-      encodeInstruction(new PushInstruction(NumberType.uint16));
+      encodeOperation(new PushOperation(NumberType.uint16));
       encodeImmediateArgument(NumberType.uint16, 1);
-      encodeInstruction(new AddInstruction(NumberType.uint8));
+      encodeOperation(new AddOperation(NumberType.uint8));
 
       vm.executeNextInstruction();
       expect(vm.programCounter, equals(2));
@@ -90,7 +90,7 @@ void main() {
           NumberType.sint64: -pow(2, 63)
         };
         values.forEach((numberType, value) {
-          encodeInstruction(new PushInstruction(numberType));
+          encodeOperation(new PushOperation(numberType));
           encodeImmediateArgument(numberType, value);
 
           vm.executeNextInstruction();
@@ -101,7 +101,7 @@ void main() {
 
     group('pop', () {
       test('reduces stack size by immediate argument value', () {
-        encodeInstruction(new PopInstruction());
+        encodeOperation(new PopOperation());
         encodeImmediateArgument(NumberType.uint16, 20);
         vm.stackPointer = 32;
 
@@ -112,7 +112,7 @@ void main() {
 
     group('alloc', () {
       test('increases stack size by immediate argument value', () {
-        encodeInstruction(new StackAllocateInstruction());
+        encodeOperation(new StackAllocateOperation());
         encodeImmediateArgument(NumberType.uint16, 20);
         vm.stackPointer = 32;
 
@@ -136,7 +136,7 @@ void main() {
 
           // execute instruction
           vm.pushStack(addressSize, dataAddress);
-          encodeInstruction(new FetchInstruction());
+          encodeOperation(new FetchOperation());
           encodeImmediateArgument(addressSize, numberOfBytes);
           vm.executeNextInstruction();
 
@@ -163,7 +163,7 @@ void main() {
 
           // execute instruction
           vm.pushStack(addressSize, dataAddress);
-          encodeInstruction(new StoreInstruction());
+          encodeOperation(new StoreOperation());
           encodeImmediateArgument(addressSize, numberOfBytes);
           vm.executeNextInstruction();
 
@@ -179,7 +179,7 @@ void main() {
     group('loadr', () {
       test('offsets immediate argument by current frame pointer', () {
         vm.framePointer = vm.stackPointer = 100;
-        encodeInstruction(new LoadRelativeAddressInstruction());
+        encodeOperation(new LoadRelativeAddressOperation());
         encodeImmediateArgument(addressSize, 20);
         vm.executeNextInstruction();
         expect(vm.popStack(addressSize), equals(80));
@@ -187,7 +187,7 @@ void main() {
 
       test('can target addresses outside of the current frame', () {
         vm.framePointer = vm.stackPointer = 100;
-        encodeInstruction(new LoadRelativeAddressInstruction());
+        encodeOperation(new LoadRelativeAddressOperation());
         encodeImmediateArgument(addressSize, -10);
         vm.executeNextInstruction();
         expect(vm.popStack(addressSize), equals(110));
@@ -197,7 +197,7 @@ void main() {
     group('halt', () {
       test('throws HaltSignal with exit code from stack', () {
         vm.pushStack(NumberType.uint32, 156);
-        encodeInstruction(new HaltInstruction());
+        encodeOperation(new HaltOperation());
         expect(
             vm.executeNextInstruction,
             throwsA(predicate(
@@ -207,7 +207,7 @@ void main() {
 
     group('jump', () {
       test('sets VM.programCounter to immediate value', () {
-        encodeInstruction(new JumpInstruction());
+        encodeOperation(new JumpOperation());
         encodeImmediateArgument(addressSize, 33);
         vm.executeNextInstruction();
         expect(vm.programCounter, equals(33));
@@ -217,7 +217,7 @@ void main() {
     group('jumpz', () {
       test('jumps to immediate value if top stack byte is 0', () {
         vm.pushStack(NumberType.uint8, 0);
-        encodeInstruction(new JumpZeroInstruction());
+        encodeOperation(new JumpZeroOperation());
         encodeImmediateArgument(addressSize, 9);
         vm.executeNextInstruction();
         expect(vm.programCounter, equals(9));
@@ -225,7 +225,7 @@ void main() {
 
       test('advances as normal if top stack byte is not 0', () {
         vm.pushStack(NumberType.uint8, 22);
-        encodeInstruction(new JumpZeroInstruction());
+        encodeOperation(new JumpZeroOperation());
         encodeImmediateArgument(addressSize, 78);
         vm.executeNextInstruction();
         expect(vm.programCounter, equals(3));
@@ -241,7 +241,7 @@ void main() {
         var expectedNewStackPointer =
             vm.stackPointer - 4 * addressSize.sizeInBytes;
 
-        encodeInstruction(new CallInstruction(), 78);
+        encodeOperation(new CallOperation(), 78);
         vm.pushStack(addressSize, 199);
         vm.executeNextInstruction();
 
@@ -260,8 +260,8 @@ void main() {
         vm.framePointer = 230;
         vm.extremePointer = 210;
         vm.programCounter = 10;
-        encodeInstruction(new CallInstruction(), 10);
-        encodeInstruction(new ReturnInstruction(), 50);
+        encodeOperation(new CallOperation(), 10);
+        encodeOperation(new ReturnOperation(), 50);
         vm.pushStack(addressSize, 50);
 
         vm.executeNextInstruction();
@@ -277,7 +277,7 @@ void main() {
     group('enter', () {
       test('sets extreme pointer to immediate argument', () {
         vm.framePointer = 53;
-        encodeInstruction(new EnterFunctionInstruction());
+        encodeOperation(new EnterFunctionOperation());
         encodeImmediateArgument(addressSize, 23);
         vm.executeNextInstruction();
         expect(vm.extremePointer, equals(30));
@@ -289,7 +289,7 @@ void main() {
           (NumberType from, NumberType to, num original, [num result]) {
         result ??= original;
         vm.pushStack(from, original);
-        encodeInstruction(new TypeConversionInstruction(from, to));
+        encodeOperation(new TypeConversionOperation(from, to));
         vm.executeNextInstruction();
         expect(vm.popStack(to), equals(result));
       };
@@ -321,18 +321,18 @@ void main() {
     });
 
     group('arithmetic:', () {
-      var testArithmetic = (ArithmeticOperationInstruction instruction, num op1,
-          num op2, num result) {
+      var testArithmetic =
+          (ArithmeticOperation instruction, num op1, num op2, num result) {
         vm.pushStack(instruction.valueType, op1);
         vm.pushStack(instruction.valueType, op2);
-        encodeInstruction(instruction);
+        encodeOperation(instruction);
         vm.executeNextInstruction();
         expect(vm.popStack(instruction.valueType), equals(result));
       };
 
       group('add', () {
         var testAdd = (NumberType numberType, num op1, num op2, num result) =>
-            testArithmetic(new AddInstruction(numberType), op1, op2, result);
+            testArithmetic(new AddOperation(numberType), op1, op2, result);
 
         group('<uint>', () {
           test('adds values', () {
@@ -377,8 +377,7 @@ void main() {
 
       group('sub', () {
         var testSub = (NumberType numberType, num op1, num op2, num result) =>
-            testArithmetic(
-                new SubtractInstruction(numberType), op1, op2, result);
+            testArithmetic(new SubtractOperation(numberType), op1, op2, result);
 
         group('<uint>', () {
           test('subtracts values', () {
@@ -410,8 +409,7 @@ void main() {
 
       group('mul', () {
         var testMul = (NumberType numberType, num op1, num op2, num result) =>
-            testArithmetic(
-                new MultiplyInstruction(numberType), op1, op2, result);
+            testArithmetic(new MultiplyOperation(numberType), op1, op2, result);
 
         group('<uint>', () {
           test('multiplies values', () {
@@ -443,7 +441,7 @@ void main() {
 
       group('div', () {
         var testDiv = (NumberType numberType, num op1, num op2, num result) =>
-            testArithmetic(new DivideInstruction(numberType), op1, op2, result);
+            testArithmetic(new DivideOperation(numberType), op1, op2, result);
 
         group('<uint>', () {
           test('divides values', () {
@@ -468,7 +466,7 @@ void main() {
 
       group('mod', () {
         var testMod = (NumberType numberType, num op1, num op2, num result) =>
-            testArithmetic(new ModuloInstruction(numberType), op1, op2, result);
+            testArithmetic(new ModuloOperation(numberType), op1, op2, result);
 
         test('<uint> calculates remainder', () {
           testMod(NumberType.uint8, 147, 12, 3);
@@ -484,7 +482,7 @@ void main() {
         var testAnd =
             (NumberType numberType, String op1, String op2, String result) =>
                 testArithmetic(
-                    new BitwiseAndInstruction(numberType),
+                    new BitwiseAndOperation(numberType),
                     int.parse(op1, radix: 2),
                     int.parse(op2, radix: 2),
                     int.parse(result, radix: 2));
@@ -503,7 +501,7 @@ void main() {
         var testOr =
             (NumberType numberType, String op1, String op2, String result) =>
                 testArithmetic(
-                    new BitwiseOrInstruction(numberType),
+                    new BitwiseOrOperation(numberType),
                     int.parse(op1, radix: 2),
                     int.parse(op2, radix: 2),
                     int.parse(result, radix: 2));
@@ -522,7 +520,7 @@ void main() {
         var testXor =
             (NumberType numberType, String op1, String op2, String result) =>
                 testArithmetic(
-                    new BitwiseExclusiveOrInstruction(numberType),
+                    new BitwiseExclusiveOrOperation(numberType),
                     int.parse(op1, radix: 2),
                     int.parse(op2, radix: 2),
                     int.parse(result, radix: 2));
@@ -539,17 +537,17 @@ void main() {
     });
 
     group('comparison:', () {
-      var compare = (ComparisonInstruction instruction, num op1, num op2) {
+      var compare = (ComparisonOperation instruction, num op1, num op2) {
         vm.pushStack(instruction.valueType, op1);
         vm.pushStack(instruction.valueType, op2);
-        encodeInstruction(instruction);
+        encodeOperation(instruction);
         vm.executeNextInstruction();
         return vm.popStack(NumberType.uint8) > 0;
       };
 
       group('eq', () {
         var compareEq = (NumberType numberType, num op1, num op2) =>
-            compare(new EqualsInstruction(numberType), op1, op2);
+            compare(new EqualsOperation(numberType), op1, op2);
 
         test('<uint>', () {
           expect(compareEq(NumberType.uint8, 42, 42), isTrue);
@@ -579,7 +577,7 @@ void main() {
 
       group('gt', () {
         var compareGt = (NumberType numberType, num op1, num op2) =>
-            compare(new GreaterThanInstruction(numberType), op1, op2);
+            compare(new GreaterThanOperation(numberType), op1, op2);
 
         test('<uint>', () {
           expect(compareGt(NumberType.uint8, 5, 3), isTrue);
@@ -610,7 +608,7 @@ void main() {
 
       group('ge', () {
         var compareGe = (NumberType numberType, num op1, num op2) =>
-            compare(new GreaterEqualsInstruction(numberType), op1, op2);
+            compare(new GreaterEqualsOperation(numberType), op1, op2);
 
         test('<uint>', () {
           expect(compareGe(NumberType.uint8, 6, 2), isTrue);
@@ -639,8 +637,8 @@ void main() {
     group('not', () {
       test('toggles between 0 and 1', () {
         vm.pushStack(NumberType.uint8, 0);
-        encodeInstruction(new ToggleBooleanInstruction());
-        encodeInstruction(new ToggleBooleanInstruction());
+        encodeOperation(new ToggleBooleanOperation());
+        encodeOperation(new ToggleBooleanOperation());
 
         vm.executeNextInstruction();
         expect(
@@ -652,7 +650,7 @@ void main() {
 
       test('recognizes non-zero values as true', () {
         vm.pushStack(NumberType.uint8, 123);
-        encodeInstruction(new ToggleBooleanInstruction());
+        encodeOperation(new ToggleBooleanOperation());
         vm.executeNextInstruction();
         expect(
             vm.readMemoryValue(vm.stackPointer, NumberType.uint8), equals(0));

@@ -1,6 +1,6 @@
 /// This library implements the target architecture of the minic compiler,
 /// consisting of the [instruction set architecture][1] and a [virtual machine]
-/// [2] that implements these instructions.
+/// [2] that implements these operations.
 ///
 /// The code segment and runtime data each have their own address space of
 /// 2^16B ≈ 65kB. The instruction set design is heavily inspired by the
@@ -10,11 +10,11 @@
 /// machine.
 ///
 /// _A note about wording:
-/// In this library, 'instruction' refers to an operation that can be performed
-/// by the VM, and therefore to an instance of a subclass of [Instruction]. The
-/// term 'opcode' refers to a single-byte integer that identifies such an
-/// instruction. An opcode together with its operands is called 'instruction
-/// invocation'._
+/// In this library, an 'operation' is an atomic processing step that can be
+/// performed by the VM; each supported operation is implemented as an instance
+/// of a subclass of [AluOperation]. The term 'opcode' refers to a single-byte
+/// positive integer that identifies such an operation. An opcode together with
+/// its operands is called 'instruction'._
 ///
 /// [1]: https://en.wikipedia.org/wiki/Instruction_set
 /// [2]: https://en.wikipedia.org/wiki/Virtual_machine
@@ -29,7 +29,7 @@ const NumberType opcodeSize = NumberType.uint8;
 /// The VM uses 16-bit pointers, implying it can only address 2^16 bytes.
 const NumberType addressSize = NumberType.uint16;
 
-/// Some instructions (for example [AddInstruction]) don't distinct between
+/// Some operations (for example [AddOperation]) don't distinct between
 /// signed and unsigned integers. This method generates a string similar to
 /// [NumberType#toString], but leaves out the sign prefix for integers.
 String _unifyIntegerNames(NumberType t) => t.memoryInterpretation ==
@@ -39,118 +39,117 @@ String _unifyIntegerNames(NumberType t) => t.memoryInterpretation ==
 /// memory to store runtime data. This includes the organizational registers
 /// and random access memory.
 class VM {
-  /// This list assigns an opcode to each supported instruction, which is simply
-  /// 1 + the index of the respective instruction.
-  static final List<Instruction> instructionSet = ((instructions) =>
-      instructions
-        ..forEach((instruction) =>
-            instruction.opcode = 1 + instructions.indexOf(instruction)))([
-    new PushInstruction(NumberType.uint8),
-    new PushInstruction(NumberType.uint16),
-    new PushInstruction(NumberType.uint32),
-    new PushInstruction(NumberType.uint64),
-    new PopInstruction(),
-    new StackAllocateInstruction(),
-    new FetchInstruction(),
-    new StoreInstruction(),
-    new LoadRelativeAddressInstruction(),
-    new HaltInstruction(),
-    new JumpInstruction(),
-    new JumpInstruction(),
-    new JumpZeroInstruction(),
-    new CallInstruction(),
-    new EnterFunctionInstruction(),
-    new ReturnInstruction(),
-    new TypeConversionInstruction(NumberType.sint8, NumberType.sint16),
-    new TypeConversionInstruction(NumberType.sint16, NumberType.sint32),
-    new TypeConversionInstruction(NumberType.sint32, NumberType.sint64),
-    new TypeConversionInstruction(NumberType.uint32, NumberType.fp32),
-    new TypeConversionInstruction(NumberType.sint32, NumberType.fp32),
-    new TypeConversionInstruction(NumberType.fp32, NumberType.uint32),
-    new TypeConversionInstruction(NumberType.fp32, NumberType.sint32),
-    new TypeConversionInstruction(NumberType.uint64, NumberType.fp64),
-    new TypeConversionInstruction(NumberType.sint64, NumberType.fp64),
-    new TypeConversionInstruction(NumberType.fp64, NumberType.uint64),
-    new TypeConversionInstruction(NumberType.fp64, NumberType.sint64),
-    new TypeConversionInstruction(NumberType.fp32, NumberType.fp64),
-    new TypeConversionInstruction(NumberType.fp64, NumberType.fp32),
-    new AddInstruction(NumberType.uint8),
-    new AddInstruction(NumberType.uint16),
-    new AddInstruction(NumberType.uint32),
-    new AddInstruction(NumberType.uint64),
-    new AddInstruction(NumberType.fp32),
-    new AddInstruction(NumberType.fp64),
-    new SubtractInstruction(NumberType.uint8),
-    new SubtractInstruction(NumberType.uint16),
-    new SubtractInstruction(NumberType.uint32),
-    new SubtractInstruction(NumberType.uint64),
-    new SubtractInstruction(NumberType.fp32),
-    new SubtractInstruction(NumberType.fp64),
-    new MultiplyInstruction(NumberType.uint8),
-    new MultiplyInstruction(NumberType.uint16),
-    new MultiplyInstruction(NumberType.uint32),
-    new MultiplyInstruction(NumberType.uint64),
-    new MultiplyInstruction(NumberType.fp32),
-    new MultiplyInstruction(NumberType.fp64),
-    new DivideInstruction(NumberType.uint8),
-    new DivideInstruction(NumberType.uint16),
-    new DivideInstruction(NumberType.uint32),
-    new DivideInstruction(NumberType.uint64),
-    new DivideInstruction(NumberType.sint8),
-    new DivideInstruction(NumberType.sint16),
-    new DivideInstruction(NumberType.sint32),
-    new DivideInstruction(NumberType.sint64),
-    new DivideInstruction(NumberType.fp32),
-    new DivideInstruction(NumberType.fp64),
-    new ModuloInstruction(NumberType.uint8),
-    new ModuloInstruction(NumberType.uint16),
-    new ModuloInstruction(NumberType.uint32),
-    new ModuloInstruction(NumberType.uint64),
-    new ModuloInstruction(NumberType.sint8),
-    new ModuloInstruction(NumberType.sint16),
-    new ModuloInstruction(NumberType.sint32),
-    new ModuloInstruction(NumberType.sint64),
-    new ModuloInstruction(NumberType.fp32),
-    new ModuloInstruction(NumberType.fp64),
-    new BitwiseAndInstruction(NumberType.uint8),
-    new BitwiseAndInstruction(NumberType.uint16),
-    new BitwiseAndInstruction(NumberType.uint32),
-    new BitwiseAndInstruction(NumberType.uint64),
-    new BitwiseOrInstruction(NumberType.uint8),
-    new BitwiseOrInstruction(NumberType.uint16),
-    new BitwiseOrInstruction(NumberType.uint32),
-    new BitwiseOrInstruction(NumberType.uint64),
-    new BitwiseExclusiveOrInstruction(NumberType.uint8),
-    new BitwiseExclusiveOrInstruction(NumberType.uint16),
-    new BitwiseExclusiveOrInstruction(NumberType.uint32),
-    new BitwiseExclusiveOrInstruction(NumberType.uint64),
-    new EqualsInstruction(NumberType.uint8),
-    new EqualsInstruction(NumberType.uint16),
-    new EqualsInstruction(NumberType.uint32),
-    new EqualsInstruction(NumberType.uint64),
-    new EqualsInstruction(NumberType.fp32),
-    new EqualsInstruction(NumberType.fp64),
-    new GreaterThanInstruction(NumberType.uint8),
-    new GreaterThanInstruction(NumberType.uint16),
-    new GreaterThanInstruction(NumberType.uint32),
-    new GreaterThanInstruction(NumberType.uint64),
-    new GreaterThanInstruction(NumberType.sint8),
-    new GreaterThanInstruction(NumberType.sint16),
-    new GreaterThanInstruction(NumberType.sint32),
-    new GreaterThanInstruction(NumberType.sint64),
-    new GreaterThanInstruction(NumberType.fp32),
-    new GreaterThanInstruction(NumberType.fp64),
-    new GreaterEqualsInstruction(NumberType.uint8),
-    new GreaterEqualsInstruction(NumberType.uint16),
-    new GreaterEqualsInstruction(NumberType.uint32),
-    new GreaterEqualsInstruction(NumberType.uint64),
-    new GreaterEqualsInstruction(NumberType.sint8),
-    new GreaterEqualsInstruction(NumberType.sint16),
-    new GreaterEqualsInstruction(NumberType.sint32),
-    new GreaterEqualsInstruction(NumberType.sint64),
-    new GreaterEqualsInstruction(NumberType.fp32),
-    new GreaterEqualsInstruction(NumberType.fp64),
-    new ToggleBooleanInstruction()
+  /// This list assigns an opcode to each supported operation, which is simply
+  /// 1 + the index of the respective operation.
+  static final List<AluOperation> instructionSet = ((operations) => operations
+    ..forEach(
+        (operation) => operation.opcode = 1 + operations.indexOf(operation)))([
+    new PushOperation(NumberType.uint8),
+    new PushOperation(NumberType.uint16),
+    new PushOperation(NumberType.uint32),
+    new PushOperation(NumberType.uint64),
+    new PopOperation(),
+    new StackAllocateOperation(),
+    new FetchOperation(),
+    new StoreOperation(),
+    new LoadRelativeAddressOperation(),
+    new HaltOperation(),
+    new JumpOperation(),
+    new JumpOperation(),
+    new JumpZeroOperation(),
+    new CallOperation(),
+    new EnterFunctionOperation(),
+    new ReturnOperation(),
+    new TypeConversionOperation(NumberType.sint8, NumberType.sint16),
+    new TypeConversionOperation(NumberType.sint16, NumberType.sint32),
+    new TypeConversionOperation(NumberType.sint32, NumberType.sint64),
+    new TypeConversionOperation(NumberType.uint32, NumberType.fp32),
+    new TypeConversionOperation(NumberType.sint32, NumberType.fp32),
+    new TypeConversionOperation(NumberType.fp32, NumberType.uint32),
+    new TypeConversionOperation(NumberType.fp32, NumberType.sint32),
+    new TypeConversionOperation(NumberType.uint64, NumberType.fp64),
+    new TypeConversionOperation(NumberType.sint64, NumberType.fp64),
+    new TypeConversionOperation(NumberType.fp64, NumberType.uint64),
+    new TypeConversionOperation(NumberType.fp64, NumberType.sint64),
+    new TypeConversionOperation(NumberType.fp32, NumberType.fp64),
+    new TypeConversionOperation(NumberType.fp64, NumberType.fp32),
+    new AddOperation(NumberType.uint8),
+    new AddOperation(NumberType.uint16),
+    new AddOperation(NumberType.uint32),
+    new AddOperation(NumberType.uint64),
+    new AddOperation(NumberType.fp32),
+    new AddOperation(NumberType.fp64),
+    new SubtractOperation(NumberType.uint8),
+    new SubtractOperation(NumberType.uint16),
+    new SubtractOperation(NumberType.uint32),
+    new SubtractOperation(NumberType.uint64),
+    new SubtractOperation(NumberType.fp32),
+    new SubtractOperation(NumberType.fp64),
+    new MultiplyOperation(NumberType.uint8),
+    new MultiplyOperation(NumberType.uint16),
+    new MultiplyOperation(NumberType.uint32),
+    new MultiplyOperation(NumberType.uint64),
+    new MultiplyOperation(NumberType.fp32),
+    new MultiplyOperation(NumberType.fp64),
+    new DivideOperation(NumberType.uint8),
+    new DivideOperation(NumberType.uint16),
+    new DivideOperation(NumberType.uint32),
+    new DivideOperation(NumberType.uint64),
+    new DivideOperation(NumberType.sint8),
+    new DivideOperation(NumberType.sint16),
+    new DivideOperation(NumberType.sint32),
+    new DivideOperation(NumberType.sint64),
+    new DivideOperation(NumberType.fp32),
+    new DivideOperation(NumberType.fp64),
+    new ModuloOperation(NumberType.uint8),
+    new ModuloOperation(NumberType.uint16),
+    new ModuloOperation(NumberType.uint32),
+    new ModuloOperation(NumberType.uint64),
+    new ModuloOperation(NumberType.sint8),
+    new ModuloOperation(NumberType.sint16),
+    new ModuloOperation(NumberType.sint32),
+    new ModuloOperation(NumberType.sint64),
+    new ModuloOperation(NumberType.fp32),
+    new ModuloOperation(NumberType.fp64),
+    new BitwiseAndOperation(NumberType.uint8),
+    new BitwiseAndOperation(NumberType.uint16),
+    new BitwiseAndOperation(NumberType.uint32),
+    new BitwiseAndOperation(NumberType.uint64),
+    new BitwiseOrOperation(NumberType.uint8),
+    new BitwiseOrOperation(NumberType.uint16),
+    new BitwiseOrOperation(NumberType.uint32),
+    new BitwiseOrOperation(NumberType.uint64),
+    new BitwiseExclusiveOrOperation(NumberType.uint8),
+    new BitwiseExclusiveOrOperation(NumberType.uint16),
+    new BitwiseExclusiveOrOperation(NumberType.uint32),
+    new BitwiseExclusiveOrOperation(NumberType.uint64),
+    new EqualsOperation(NumberType.uint8),
+    new EqualsOperation(NumberType.uint16),
+    new EqualsOperation(NumberType.uint32),
+    new EqualsOperation(NumberType.uint64),
+    new EqualsOperation(NumberType.fp32),
+    new EqualsOperation(NumberType.fp64),
+    new GreaterThanOperation(NumberType.uint8),
+    new GreaterThanOperation(NumberType.uint16),
+    new GreaterThanOperation(NumberType.uint32),
+    new GreaterThanOperation(NumberType.uint64),
+    new GreaterThanOperation(NumberType.sint8),
+    new GreaterThanOperation(NumberType.sint16),
+    new GreaterThanOperation(NumberType.sint32),
+    new GreaterThanOperation(NumberType.sint64),
+    new GreaterThanOperation(NumberType.fp32),
+    new GreaterThanOperation(NumberType.fp64),
+    new GreaterEqualsOperation(NumberType.uint8),
+    new GreaterEqualsOperation(NumberType.uint16),
+    new GreaterEqualsOperation(NumberType.uint32),
+    new GreaterEqualsOperation(NumberType.uint64),
+    new GreaterEqualsOperation(NumberType.sint8),
+    new GreaterEqualsOperation(NumberType.sint16),
+    new GreaterEqualsOperation(NumberType.sint32),
+    new GreaterEqualsOperation(NumberType.sint64),
+    new GreaterEqualsOperation(NumberType.fp32),
+    new GreaterEqualsOperation(NumberType.fp64),
+    new ToggleBooleanOperation()
   ]);
 
   /// The program that is executed when calling [run].
@@ -170,7 +169,7 @@ class VM {
 
   /// Points to the last byte in the stack that is not owned by the current
   /// function invocation. This register is used to determine the memory address
-  /// of local variables. Look at [LoadRelativeAddressInstruction] for details.
+  /// of local variables. Look at [LoadRelativeAddressOperation] for details.
   int framePointer;
 
   /// Points to the highest stack index the current function might allocate.
@@ -208,26 +207,25 @@ class VM {
     }
   }
 
-  /// Execute the instruction invocation currently referenced by the instruction
-  /// pointer.
+  /// Execute the instruction currently referenced by the program counter.
   ///
   /// Throw [SegfaultSignal] when a runtime error occurs.
   void executeNextInstruction() {
-    var instruction;
+    var operation;
     try {
       var opcode = program.getValue(programCounter++, NumberType.uint8) - 1;
-      instruction = instructionSet[opcode];
+      operation = instructionSet[opcode];
     } on RangeError {
       throw new SegfaultSignal(programCounter, 'Undefined opcode');
     }
 
     var immediateArgument;
-    if (instruction.immediateArgumentSize != null) {
+    if (operation.immediateArgumentSize != null) {
       immediateArgument =
-          program.getValue(programCounter, instruction.immediateArgumentSize);
-      programCounter += instruction.immediateArgumentSize.sizeInBytes;
+          program.getValue(programCounter, operation.immediateArgumentSize);
+      programCounter += operation.immediateArgumentSize.sizeInBytes;
     }
-    instruction.execute(this, immediateArgument);
+    operation.execute(this, immediateArgument);
   }
 
   /// Read [memory] at address as the specified number type.
@@ -265,56 +263,57 @@ class VM {
   }
 }
 
-/// Implements a machine instruction that can be executed by a [VM].
+/// Implements an operation of the [VM]s [arithmetic logic unit][1].
 ///
-/// Instructions are instantiated as constant objects because we need several
+/// Operations are instantiated as constant objects because we need several
 /// different versions of some of them. For example, we need integer addition
 /// for 8, 16, 32 and 64 bit words, but don't want to implement 4 different
-/// methods for it. Instead, [AddInstruction] is instantiated for each number
+/// methods for it. Instead, [AddOperation] is instantiated for each number
 /// type.
-abstract class Instruction {
-  /// A verbose mnemonic for this instruction. If two instructions have the same
+///
+/// [1]: https://en.wikipedia.org/wiki/Arithmetic_logic_unit
+abstract class AluOperation {
+  /// A verbose mnemonic for this operation. If two operations have the same
   /// name, they yield the same result if executed on a VM.
   String get name;
 
-  /// This number of bytes immediately following this instruction are passed to
-  /// [execute] as `immediateArgument`.
+  /// This number of bytes immediately following this operations opcode are
+  /// passed to [execute] as `immediateArgument`.
   NumberType get immediateArgumentSize => null;
 
-  /// The opcode of this instruction. Is assigned by `VM.instructionSet`.
+  /// The opcode of this operation. Is assigned by `VM.instructionSet`.
   int opcode;
 
-  Instruction();
+  AluOperation();
 
-  /// Execute this instruction on `vm`.
+  /// Execute this operation on `vm`.
   void execute(VM vm, num immediateArgument);
 
-  /// Return true if this instruction yields the same result as `other` when
+  /// Return true if this operation yields the same result as `other` when
   /// executed on a VM. Because [name] generates strings with the same goal in
   /// mind, we can simply compare these strings.
-  bool operator ==(Object other) => other is Instruction && name == other.name;
+  bool operator ==(Object other) => other is AluOperation && name == other.name;
 
   /// Return the hash code of [name]. Look at [operator==] for an explanation.
   int get hashCode => name.hashCode;
 }
 
-/// Superclass for instructions that are overloaded with a single number type.
-/// This includes all overloaded instructions except
-/// [TypeConversionInstruction].
-abstract class OverloadedInstruction extends Instruction {
+/// Superclass for operations that are overloaded with a single number type.
+/// This includes all overloaded operations except [TypeConversionOperation].
+abstract class OverloadedOperation extends AluOperation {
   /// Size of the value that is pushed to the stack.
   final NumberType valueType;
 
-  OverloadedInstruction(this.valueType);
+  OverloadedOperation(this.valueType);
 }
 
 /// Pushes the immediate argument on the stack.
-class PushInstruction extends OverloadedInstruction {
+class PushOperation extends OverloadedOperation {
   String get name => 'loadc<${valueType.sizeInBits}>';
 
   NumberType get immediateArgumentSize => valueType;
 
-  PushInstruction(NumberType valueType) : super(valueType);
+  PushOperation(NumberType valueType) : super(valueType);
 
   void execute(VM vm, num value) {
     vm.pushStack(valueType, value);
@@ -322,12 +321,12 @@ class PushInstruction extends OverloadedInstruction {
 }
 
 /// Reduces the stack by _n_ bytes, encoded as immediate argument.
-class PopInstruction extends Instruction {
+class PopOperation extends AluOperation {
   String get name => 'pop';
 
   NumberType get immediateArgumentSize => NumberType.uint16;
 
-  PopInstruction();
+  PopOperation();
 
   void execute(VM vm, int numberOfBytes) {
     vm.stackPointer += numberOfBytes;
@@ -335,12 +334,12 @@ class PopInstruction extends Instruction {
 }
 
 /// Increases the stack by _n_ bytes, encoded as immediate argument.
-class StackAllocateInstruction extends Instruction {
+class StackAllocateOperation extends AluOperation {
   String get name => 'alloc';
 
   NumberType get immediateArgumentSize => addressSize;
 
-  StackAllocateInstruction();
+  StackAllocateOperation();
 
   void execute(VM vm, int numberOfBytes) {
     vm.stackPointer -= numberOfBytes;
@@ -349,12 +348,12 @@ class StackAllocateInstruction extends Instruction {
 
 /// Loads _n_ bytes from _address_ to the stack, where _n_ is encoded as
 /// immediate argument in the instruction, and _address_ is read from the stack.
-class FetchInstruction extends Instruction {
+class FetchOperation extends AluOperation {
   String get name => 'loada';
 
   NumberType get immediateArgumentSize => addressSize;
 
-  FetchInstruction();
+  FetchOperation();
 
   void execute(VM vm, int numberOfBytes) {
     var sourceAddress = vm.popStack(addressSize);
@@ -377,12 +376,12 @@ class FetchInstruction extends Instruction {
 
 /// Stores _n_ bytes at _address_ on the stack, where _n_ is encoded as
 /// immediate argument in the instruction, and _address_ is read from the stack.
-class StoreInstruction extends Instruction {
+class StoreOperation extends AluOperation {
   String get name => 'store';
 
   NumberType get immediateArgumentSize => addressSize;
 
-  StoreInstruction();
+  StoreOperation();
 
   void execute(VM vm, num numberOfBytes) {
     var address = vm.popStack(addressSize);
@@ -401,12 +400,12 @@ class StoreInstruction extends Instruction {
 }
 
 /// Load the value `vm.framePointer` - _immediate value_ to the stack.
-class LoadRelativeAddressInstruction extends Instruction {
+class LoadRelativeAddressOperation extends AluOperation {
   String get name => 'loadr';
 
   NumberType get immediateArgumentSize => addressSize;
 
-  LoadRelativeAddressInstruction();
+  LoadRelativeAddressOperation();
 
   void execute(VM vm, int offset) {
     vm.pushStack(addressSize, vm.framePointer - offset);
@@ -415,22 +414,22 @@ class LoadRelativeAddressInstruction extends Instruction {
 
 /// Halts the program execution by throwing [HaltSignal]. Reads the exit code
 /// from the stack as `uint32`.
-class HaltInstruction extends Instruction {
+class HaltOperation extends AluOperation {
   String get name => 'halt';
 
-  HaltInstruction();
+  HaltOperation();
 
   void execute(VM vm, _) =>
       throw new HaltSignal(vm.popStack(NumberType.uint32));
 }
 
 /// Sets the program counter to the immediate value.
-class JumpInstruction extends Instruction {
+class JumpOperation extends AluOperation {
   String get name => 'jump';
 
   NumberType get immediateArgumentSize => addressSize;
 
-  JumpInstruction();
+  JumpOperation();
 
   void execute(VM vm, int address) {
     vm.programCounter = address;
@@ -439,12 +438,12 @@ class JumpInstruction extends Instruction {
 
 /// Pops the top byte from the stack; if it equals zero, jump to the immediate
 /// address.
-class JumpZeroInstruction extends Instruction {
+class JumpZeroOperation extends AluOperation {
   String get name => 'jumpz';
 
   NumberType get immediateArgumentSize => addressSize;
 
-  JumpZeroInstruction();
+  JumpZeroOperation();
 
   void execute(VM vm, int address) {
     if (vm.popStack(NumberType.uint8) == 0) vm.programCounter = address;
@@ -465,12 +464,12 @@ class JumpZeroInstruction extends Instruction {
 ///
 /// Points the frame pointer to the top of the stack (and therefore on the
 /// return address).
-class CallInstruction extends Instruction {
+class CallOperation extends AluOperation {
   String get name => 'call';
 
   NumberType get immediateArgumentSize => addressSize;
 
-  CallInstruction();
+  CallOperation();
 
   void execute(VM vm, int offset) {
     var jumpTarget = vm.popStack(addressSize);
@@ -486,12 +485,12 @@ class CallInstruction extends Instruction {
 
 /// Completes the runtime context of a function invocation by setting the
 /// extreme pointer.
-class EnterFunctionInstruction extends Instruction {
+class EnterFunctionOperation extends AluOperation {
   String get name => 'enter';
 
   NumberType get immediateArgumentSize => addressSize;
 
-  EnterFunctionInstruction();
+  EnterFunctionOperation();
 
   void execute(VM vm, int offset) {
     vm.extremePointer = vm.framePointer - offset;
@@ -500,10 +499,10 @@ class EnterFunctionInstruction extends Instruction {
 
 /// Returns from a function call. Restores the organizational registers from the
 /// backed up values on the stack.
-class ReturnInstruction extends Instruction {
+class ReturnOperation extends AluOperation {
   String get name => 'return';
 
-  ReturnInstruction();
+  ReturnOperation();
 
   void execute(VM vm, _) {
     var localOffset = (int n) => vm.framePointer + n * addressSize.sizeInBytes;
@@ -522,7 +521,7 @@ class ReturnInstruction extends Instruction {
 ///
 /// The VM instruction set only supports a small subset of all to/from
 /// conversion pairs, because a large part can be constructed with these and
-/// other instructions:
+/// other operations:
 ///
 ///   * Casts between unsigned sizes can be done with `push<n> 0` and `pop n`,
 ///     where _n_ is the size difference.
@@ -553,21 +552,21 @@ class ReturnInstruction extends Instruction {
 ///
 ///     float↦double
 ///     double↦float
-class TypeConversionInstruction extends Instruction {
+class TypeConversionOperation extends AluOperation {
   final NumberType from;
   final NumberType to;
 
   String get name => 'cast<$from↦$to>';
 
-  TypeConversionInstruction(this.from, this.to);
+  TypeConversionOperation(this.from, this.to);
 
   void execute(VM vm, _) => vm.pushStack(to, vm.popStack(from));
 }
 
 /// Superclass for all side effect-free arithmetic and bitwise operators with
 /// two operands. Subclasses need only implement the `calculate` method.
-abstract class ArithmeticOperationInstruction extends OverloadedInstruction {
-  ArithmeticOperationInstruction(NumberType numberType) : super(numberType);
+abstract class ArithmeticOperation extends OverloadedOperation {
+  ArithmeticOperation(NumberType numberType) : super(numberType);
 
   /// Pop two `numberType` elements from the stack, pass them to `calculate`
   /// and push the result back onto the stack.
@@ -582,74 +581,74 @@ abstract class ArithmeticOperationInstruction extends OverloadedInstruction {
 }
 
 /// Adds the two top stack elements.
-class AddInstruction extends ArithmeticOperationInstruction {
+class AddOperation extends ArithmeticOperation {
   String get name => 'add<${_unifyIntegerNames(valueType)}>';
 
-  AddInstruction(numberType) : super(numberType);
+  AddOperation(numberType) : super(numberType);
 
   num calculate(num a, num b) => a + b;
 }
 
 /// Subtracts the two top stack elements.
-class SubtractInstruction extends ArithmeticOperationInstruction {
+class SubtractOperation extends ArithmeticOperation {
   String get name => 'sub<${_unifyIntegerNames(valueType)}>';
 
-  SubtractInstruction(numberType) : super(numberType);
+  SubtractOperation(numberType) : super(numberType);
 
   num calculate(num a, num b) => a - b;
 }
 
 /// Multiplies the two top stack elements.
-class MultiplyInstruction extends ArithmeticOperationInstruction {
+class MultiplyOperation extends ArithmeticOperation {
   String get name => 'mul<${_unifyIntegerNames(valueType)}>';
 
-  MultiplyInstruction(numberType) : super(numberType);
+  MultiplyOperation(numberType) : super(numberType);
 
   num calculate(num a, num b) => a * b;
 }
 
 /// Divides the two top stack elements.
-class DivideInstruction extends ArithmeticOperationInstruction {
+class DivideOperation extends ArithmeticOperation {
   String get name => 'div<$valueType>';
 
-  DivideInstruction(numberType) : super(numberType);
+  DivideOperation(numberType) : super(numberType);
 
   num calculate(num a, num b) =>
       valueType.memoryInterpretation == NumberType.float ? a / b : a ~/ b;
 }
 
 /// Calculates the modulo of the two top stack elements.
-class ModuloInstruction extends ArithmeticOperationInstruction {
+class ModuloOperation extends ArithmeticOperation {
   String get name => 'mod<$valueType>';
 
-  ModuloInstruction(numberType) : super(numberType);
+  ModuloOperation(numberType) : super(numberType);
 
   int calculate(int a, int b) => a % b;
 }
 
 /// Bitwise _and_ of the two top stack elements.
-class BitwiseAndInstruction extends ArithmeticOperationInstruction {
+class BitwiseAndOperation extends ArithmeticOperation {
   String get name => 'and<${valueType.sizeInBits}>';
 
-  BitwiseAndInstruction(numberType) : super(numberType);
+  BitwiseAndOperation(numberType) : super(numberType);
 
   int calculate(int a, int b) => a & b;
 }
 
 /// Bitwise _or_ of the two top stack elements.
-class BitwiseOrInstruction extends ArithmeticOperationInstruction {
+class BitwiseOrOperation extends ArithmeticOperation {
   String get name => 'or<${valueType.sizeInBits}>';
 
-  BitwiseOrInstruction(numberType) : super(numberType);
+  BitwiseOrOperation(numberType) : super(numberType);
 
   int calculate(int a, int b) => a | b;
 }
 
 /// Bitwise _xor_ of the two top stack elements.
-class BitwiseExclusiveOrInstruction extends ArithmeticOperationInstruction {
+class BitwiseExclusiveOrOperation extends ArithmeticOperation {
   String get name => 'xor<${valueType.sizeInBits}>';
 
-  BitwiseExclusiveOrInstruction(numberType) : super(numberType);
+  BitwiseExclusiveOrOperation(numberType) : super(numberType);
 
   int calculate(int a, int b) => a ^ b;
 }
@@ -658,8 +657,8 @@ class BitwiseExclusiveOrInstruction extends ArithmeticOperationInstruction {
 /// only implement the `compare` method.
 ///
 /// The result is always a single byte, indipendent from the operand size.
-abstract class ComparisonInstruction extends OverloadedInstruction {
-  ComparisonInstruction(numberType) : super(numberType);
+abstract class ComparisonOperation extends OverloadedOperation {
+  ComparisonOperation(numberType) : super(numberType);
 
   void execute(VM vm, _) {
     var op2 = vm.popStack(valueType);
@@ -671,37 +670,37 @@ abstract class ComparisonInstruction extends OverloadedInstruction {
 }
 
 /// Compares the two top stack elements using `==`.
-class EqualsInstruction extends ComparisonInstruction {
+class EqualsOperation extends ComparisonOperation {
   String get name => 'eq<${_unifyIntegerNames(valueType)}>';
 
-  EqualsInstruction(numberType) : super(numberType);
+  EqualsOperation(numberType) : super(numberType);
 
   bool compare(num a, num b) => a == b;
 }
 
 /// Compares the two top stack elements using `>`.
-class GreaterThanInstruction extends ComparisonInstruction {
+class GreaterThanOperation extends ComparisonOperation {
   String get name => 'gt<$valueType>';
 
-  GreaterThanInstruction(numberType) : super(numberType);
+  GreaterThanOperation(numberType) : super(numberType);
 
   bool compare(num a, num b) => a > b;
 }
 
 /// Compares the two top stack elements using `≥`.
-class GreaterEqualsInstruction extends ComparisonInstruction {
+class GreaterEqualsOperation extends ComparisonOperation {
   String get name => 'ge<$valueType>';
 
-  GreaterEqualsInstruction(numberType) : super(numberType);
+  GreaterEqualsOperation(numberType) : super(numberType);
 
   bool compare(num a, num b) => a >= b;
 }
 
 /// Logical negation of the top stack element.
-class ToggleBooleanInstruction extends Instruction {
+class ToggleBooleanOperation extends AluOperation {
   String get name => 'not';
 
-  ToggleBooleanInstruction();
+  ToggleBooleanOperation();
 
   void execute(VM vm, _) => vm.pushStack(
       NumberType.uint8, vm.popStack(NumberType.uint8) == 0 ? 1 : 0);
