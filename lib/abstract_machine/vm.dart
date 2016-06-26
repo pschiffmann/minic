@@ -153,15 +153,21 @@ class VM {
   ]);
 
   /// The program that is executed when calling [run].
+  ///
+  /// Note that the 0th byte – though it exists for simplicity – cannot be
+  /// addressed to simulate C nullpointer behavior.
   final MemoryBlock program;
 
   /// Stores the index into [program] of the next instruction.
-  int programCounter = 0;
+  int programCounter = 1;
 
   /// Combined stack and heap in a contiguous block of memory.
   ///
   /// The stack memory begins at `memory.size - 1` and grows towards zero, while
-  /// the heap begins at zero and grows towards infinity.
+  /// the heap begins at one and grows towards infinity.
+  ///
+  /// Note that the 0th byte – though it exists for simplicity – cannot be
+  /// addressed to simulate C nullpointer behavior.
   MemoryBlock memory;
 
   /// Points to the lowest currently used byte of the stack (in [memory]).
@@ -211,6 +217,8 @@ class VM {
   ///
   /// Throw [SegfaultSignal] when a runtime error occurs.
   void executeNextInstruction() {
+    if (programCounter == 0)
+      throw new SegfaultSignal(programCounter, 'dereferenced nullptr');
     var operation;
     try {
       var opcode = program.getValue(programCounter++, NumberType.uint8) - 1;
@@ -230,6 +238,7 @@ class VM {
 
   /// Read [memory] at address as the specified number type.
   num readMemoryValue(int address, NumberType numberType) {
+    if (address == 0) throw new SegfaultSignal(address, 'dereferenced nullptr');
     try {
       return memory.getValue(address, numberType);
     } on RangeError {
@@ -248,6 +257,7 @@ class VM {
   /// Insert value into [memory] at the specified address, encoded as the
   /// specified number type.
   void setMemoryValue(int address, NumberType numberType, num value) {
+    if (address == 0) throw new SegfaultSignal(address, 'dereferenced nullptr');
     try {
       memory.setValue(address, numberType, value);
     } on RangeError {

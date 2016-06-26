@@ -24,7 +24,7 @@ void main() {
   setUp(() {
     program = new MemoryBlock(256);
     vm = new VM(program, 256);
-    _firstUnusedByteInProgram = 0;
+    _firstUnusedByteInProgram = 1;
   });
 
   group('VM', () {
@@ -52,12 +52,15 @@ void main() {
       vm.programCounter = 999;
       expect(vm.executeNextInstruction, throwsSegfaultSignal);
 
+      vm.programCounter = 0;
+      expect(vm.executeNextInstruction, throwsSegfaultSignal);
+
       vm.programCounter = -1;
       expect(vm.executeNextInstruction, throwsSegfaultSignal);
     });
 
     test('executing undefined opcode causes a segfault', () {
-      program.setValue(0, NumberType.uint8, 255);
+      program.setValue(1, NumberType.uint8, 255);
       expect(vm.executeNextInstruction, throwsSegfaultSignal);
     });
 
@@ -71,11 +74,11 @@ void main() {
       encodeOperation(new AddOperation(NumberType.uint8));
 
       vm.executeNextInstruction();
-      expect(vm.programCounter, equals(2));
-      vm.executeNextInstruction();
-      expect(vm.programCounter, equals(5));
+      expect(vm.programCounter, equals(3));
       vm.executeNextInstruction();
       expect(vm.programCounter, equals(6));
+      vm.executeNextInstruction();
+      expect(vm.programCounter, equals(7));
     });
   });
 
@@ -228,7 +231,7 @@ void main() {
         encodeOperation(new JumpZeroOperation());
         encodeImmediateArgument(addressSize, 78);
         vm.executeNextInstruction();
-        expect(vm.programCounter, equals(3));
+        expect(vm.programCounter, equals(4));
       });
     });
 
