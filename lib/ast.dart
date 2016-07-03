@@ -22,6 +22,7 @@ abstract class AstNode {
 
   /// Return an Iterable of all recursive child nodes.
   Iterable<AstNode> get recursiveChildren sync* {
+    // Iterable<AstNode> get descendants sync* {
     yield* children;
     for (var child in children) {
       if (child != null) yield* child.recursiveChildren;
@@ -84,6 +85,12 @@ class Namespace extends AstNode with Scope<Definition> {
 
   @override
   Iterable<AstNode> get children => definitions.values;
+
+  Iterable<Variable> get globalVariables =>
+      definitions.values.where((definition) => definition is Variable);
+
+  Iterable<FunctionDefinition> get functions => definitions.values
+      .where((definition) => definition is FunctionDefinition);
 
   @override
   Definition lookUp(String identifier) {
@@ -384,6 +391,30 @@ class AssignmentExpression extends Expression {
       {@required this.left, @required this.right, @required this.token});
 
   evaluate() => throw new UnimplementedError();
+}
+
+/// This class serves as an interface for algorithms that need to traverse a
+/// syntax tree. By implementing it, you can be sure that you haven't forgotten
+/// any [AstNode] subclasses.
+abstract class NodeVisitor<E> {
+  E visitNamespace(Namespace node);
+  E visitBasicType(BasicType node);
+  E visitVoidType(VoidType node);
+  E visitPointerType(PointerType node);
+  E visitVariable(Variable node);
+  E visitFunctionDefinition(FunctionDefinition node);
+  E visitGotoLabel(GotoLabel node);
+  E visitCaseLabel(CaseLabel node);
+  E visitDefaultLabel(DefaultLabel node);
+  E visitCompoundStatement(CompoundStatement node);
+  E visitGotoStatement(GotoStatement node);
+  E visitIfStatement(IfStatement node);
+  E visitSwitchStatement(SwitchStatement node);
+  E visitExpressionStatement(ExpressionStatement node);
+  E visitReturnStatement(ReturnStatement node);
+  E visitNumberLiteralExpression(NumberLiteralExpression node);
+  E visitVariableExpression(VariableExpression node);
+  E visitAssignmentExpression(AssignmentExpression node);
 }
 
 /// Thrown by [Namespace.lookUp] if `identifier` was looked up and not found.
